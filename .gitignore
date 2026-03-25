@@ -1,0 +1,16 @@
+.DS_Store
+frontend/node_modules
+frontend/.svelte-kit
+frontend/build
+frontend/.vite
+frontend/.env
+frontend/.env.*
+!.env.example
+node_modules
+.svelte-kit
+build
+coverage
+.vite
+.env
+.env.*
+!.env.example

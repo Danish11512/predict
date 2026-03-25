@@ -1,0 +1,365 @@
+{
+  "updated_utc": "2026-03-04T21:56:34.712196Z",
+  "games": [
+    {
+      "title": "North Alabama at Florida Gulf Coast",
+      "market_href": "/markets/kxncaambgame/mens-college-basketball-mens-game/kxncaambgame-26mar04unafgcu",
+      "status": "LIVE",
+      "game_clock": "2ND - 00:00",
+      "team_a": {
+        "name": null,
+        "win_pct": null,
+        "price": null
+      },
+      "team_b": {
+        "name": null,
+        "win_pct": null,
+        "price": null
+      },
+      "volume_raw": "$3,186,527 vol",
+      "markets_count": "2 markets"
+    },
+    {
+      "title": "Aston Villa vs Chelsea",
+      "market_href": "/markets/kxeplgame/english-premier-league-game/kxeplgame-26mar04avlcfc",
+      "status": "LIVE",
+      "game_clock": "2nd - 86",
+      "team_a": {
+        "name": null,
+        "win_pct": null,
+        "price": null
+      },
+      "team_b": {
+        "name": null,
+        "win_pct": null,
+        "price": null
+      },
+      "volume_raw": "$1,589,187 vol",
+      "markets_count": "3 markets"
+    },
+    {
+      "title": "Brighton vs Arsenal",
+      "market_href": "/markets/kxeplgame/english-premier-league-game/kxeplgame-26mar04briars",
+      "status": "LIVE",
+      "game_clock": "2nd - 90",
+      "team_a": {
+        "name": null,
+        "win_pct": null,
+        "price": null
+      },
+      "team_b": {
+        "name": null,
+        "win_pct": null,
+        "price": null
+      },
+      "volume_raw": "$1,868,317 vol",
+      "markets_count": "3 markets"
+    },
+    {
+      "title": "Newcastle vs Manchester United",
+      "market_href": "/markets/kxeplgame/english-premier-league-game/kxeplgame-26mar04newmun",
+      "status": "LIVE",
+      "game_clock": null,
+      "team_a": {
+        "name": "Newcastle",
+        "win_pct": 12,
+        "price": null
+      },
+      "team_b": {
+        "name": "Manchester United",
+        "win_pct": 36,
+        "price": null
+      },
+      "volume_raw": "$1,462,781 vol",
+      "markets_count": "3 markets"
+    },
+    {
+      "title": "Houston at BYU",
+      "market_href": "/markets/kxncaawbgame/college-basketball-womens-game/kxncaawbgame-26mar04houbyu",
+      "status": "LIVE",
+      "game_clock": "4TH - 1:39",
+      "team_a": {
+        "name": "BYU",
+        "win_pct": 99,
+        "price": null
+      },
+      "team_b": {
+        "name": "Houston",
+        "win_pct": 1,
+        "price": null
+      },
+      "volume_raw": "$636,480 vol",
+      "markets_count": "2 markets"
+    },
+    {
+      "title": "Navone vs Giron",
+      "market_href": "/markets/kxatpmatch/atp-tennis-match/kxatpmatch-26mar04navgir",
+      "status": "LIVE",
+      "game_clock": null,
+      "team_a": {
+        "name": null,
+        "win_pct": null,
+        "price": null
+      },
+      "team_b": {
+        "name": null,
+        "win_pct": null,
+        "price": null
+      },
+      "volume_raw": "$1,454,853 vol",
+      "markets_count": "2 markets"
+    },
+    {
+      "title": "Real Sociedad vs Bilbao",
+      "market_href": "/markets/kxcopadelreygame/copa-del-rey-game/kxcopadelreygame-26mar04rsoath",
+      "status": "LIVE",
+      "game_clock": "2nd - 64",
+      "team_a": {
+        "name": "Real Sociedad",
+        "win_pct": 93,
+        "price": null
+      },
+      "team_b": {
+        "name": "Bilbao",
+        "win_pct": 1,
+        "price": null
+      },
+      "volume_raw": "$191,754 vol",
+      "markets_count": "3 markets"
+    },
+    {
+      "title": "Fordham at Saint Louis",
+      "market_href": "/markets/kxncaawbgame/college-basketball-womens-game/kxncaawbgame-26mar04forslu",
+      "status": "LIVE",
+      "game_clock": "4TH - 8:25",
+      "team_a": {
+        "name": "Saint Louis",
+        "win_pct": 99,
+        "price": null
+      },
+      "team_b": {
+        "name": "Fordham",
+        "win_pct": 1,
+        "price": null
+      },
+      "volume_raw": "$272,864 vol",
+      "markets_count": "2 markets"
+    },
+    {
+      "title": "Marseille vs Toulouse",
+      "market_href": "/markets/kxcoupedefrancegame/coupe-de-france-gam/kxcoupedefrancegame-26mar04omtfc",
+      "status": "LIVE",
+      "game_clock": "2nd - 64",
+      "team_a": {
+        "name": "Marseille",
+        "win_pct": 1,
+        "price": null
+      },
+      "team_b": {
+        "name": "Toulouse",
+        "win_pct": 1,
+        "price": null
+      },
+      "volume_raw": "$120,458 vol",
+      "markets_count": "3 markets"
+    },
+    {
+      "title": "Arizona vs A's",
+      "market_href": "/markets/kxmlbstgame/pro-baseball-spring-training-game/kxmlbstgame-26mar041505azath",
+      "status": "LIVE",
+      "game_clock": null,
+      "team_a": {
+        "name": "A's",
+        "win_pct": 14,
+        "price": null
+      },
+      "team_b": {
+        "name": "Arizona",
+        "win_pct": 91,
+        "price": null
+      },
+      "volume_raw": "$101,589 vol",
+      "markets_count": "2 markets"
+    },
+    {
+      "title": "Lazio vs Atalanta",
+      "market_href": "/markets/kxcoppaitaliagame/coppa-italia-game/kxcoppaitaliagame-26mar04lazata",
+      "status": "LIVE",
+      "game_clock": "2nd - 85",
+      "team_a": {
+        "name": "Lazio",
+        "win_pct": 1,
+        "price": null
+      },
+      "team_b": {
+        "name": "Atalanta",
+        "win_pct": 1,
+        "price": null
+      },
+      "volume_raw": "$108,251 vol",
+      "markets_count": "3 markets"
+    },
+    {
+      "title": "Louisiana at Louisiana-Monroe",
+      "market_href": "/markets/kxncaawbgame/college-basketball-womens-game/kxncaawbgame-26mar04ullulm",
+      "status": "LIVE",
+      "game_clock": null,
+      "team_a": {
+        "name": "Louisiana-Monroe",
+        "win_pct": 99,
+        "price": null
+      },
+      "team_b": {
+        "name": "Louisiana",
+        "win_pct": 1,
+        "price": null
+      },
+      "volume_raw": "$78,311 vol",
+      "markets_count": "2 markets"
+    },
+    {
+      "title": "Indiana at Nebraska",
+      "market_href": "/markets/kxncaawbgame/college-basketball-womens-game/kxncaawbgame-26mar04indneb",
+      "status": "LIVE",
+      "game_clock": "4TH - 9:31",
+      "team_a": {
+        "name": "Nebraska",
+        "win_pct": 94,
+        "price": null
+      },
+      "team_b": {
+        "name": "Indiana",
+        "win_pct": 7,
+        "price": null
+      },
+      "volume_raw": "$96,921 vol",
+      "markets_count": "2 markets"
+    },
+    {
+      "title": "Chicago C vs Milwaukee",
+      "market_href": "/markets/kxmlbstgame/pro-baseball-spring-training-game/kxmlbstgame-26mar041510chcmil",
+      "status": "LIVE",
+      "game_clock": null,
+      "team_a": {
+        "name": "Milwaukee",
+        "win_pct": 11,
+        "price": null
+      },
+      "team_b": {
+        "name": "Chicago C",
+        "win_pct": 93,
+        "price": null
+      },
+      "volume_raw": "$61,613 vol",
+      "markets_count": "2 markets"
+    },
+    {
+      "title": "Safiullin vs Choinski",
+      "market_href": "/markets/kxatpchallengermatch/challenger-atp-/kxatpchallengermatch-26mar04safcho",
+      "status": "LIVE",
+      "game_clock": null,
+      "team_a": {
+        "name": "Roman Safiullin",
+        "win_pct": 59,
+        "price": null
+      },
+      "team_b": {
+        "name": "Jan Choinski",
+        "win_pct": 47,
+        "price": null
+      },
+      "volume_raw": "$382,117 vol",
+      "markets_count": "2 markets"
+    },
+    {
+      "title": "Potapova vs Stakusic",
+      "market_href": "/markets/kxwtamatch/wta-tennis-match/kxwtamatch-26mar04potsta",
+      "status": "LIVE",
+      "game_clock": null,
+      "team_a": {
+        "name": "Marina Stakusic",
+        "win_pct": 29,
+        "price": null
+      },
+      "team_b": {
+        "name": "Anastasia Potapova",
+        "win_pct": 71,
+        "price": null
+      },
+      "volume_raw": "$244,291 vol",
+      "markets_count": "2 markets"
+    },
+    {
+      "title": "Lorient vs Nice",
+      "market_href": "/markets/kxcoupedefrancegame/coupe-de-france-gam/kxcoupedefrancegame-26mar04fclnic",
+      "status": "LIVE",
+      "game_clock": null,
+      "team_a": {
+        "name": "Lorient",
+        "win_pct": 1,
+        "price": null
+      },
+      "team_b": {
+        "name": "Nice",
+        "win_pct": 1,
+        "price": null
+      },
+      "volume_raw": "$54,265 vol",
+      "markets_count": "3 markets"
+    },
+    {
+      "title": "Bergs vs Struff",
+      "market_href": "/markets/kxatpmatch/atp-tennis-match/kxatpmatch-26mar04berstr",
+      "status": "LIVE",
+      "game_clock": null,
+      "team_a": {
+        "name": "Zizou Bergs",
+        "win_pct": 99,
+        "price": null
+      },
+      "team_b": {
+        "name": "Jan-Lennard Struff",
+        "win_pct": 3,
+        "price": null
+      },
+      "volume_raw": "$236,254 vol",
+      "markets_count": "2 markets"
+    },
+    {
+      "title": "Tomljanovic vs Ruse",
+      "market_href": "/markets/kxwtamatch/wta-tennis-match/kxwtamatch-26mar04tomrus",
+      "status": "LIVE",
+      "game_clock": null,
+      "team_a": {
+        "name": "Elena-Gabriela Ruse",
+        "win_pct": 13,
+        "price": null
+      },
+      "team_b": {
+        "name": "Ajla Tomljanovic",
+        "win_pct": 87,
+        "price": null
+      },
+      "volume_raw": "$113,125 vol",
+      "markets_count": "2 markets"
+    },
+    {
+      "title": "Gibson vs Li",
+      "market_href": "/markets/kxwtamatch/wta-tennis-match/kxwtamatch-26mar04gibann",
+      "status": "LIVE",
+      "game_clock": null,
+      "team_a": {
+        "name": "Ann Li",
+        "win_pct": 51,
+        "price": null
+      },
+      "team_b": {
+        "name": "Talia Gibson",
+        "win_pct": 49,
+        "price": null
+      },
+      "volume_raw": "$33,320 vol",
+      "markets_count": "2 markets"
+    }
+  ]
+}
