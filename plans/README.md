@@ -1,12 +1,20 @@
 # Plans
 
-Store markdown planning documents here.
+Store documentation and implementation planning here.
 
 Suggested usage:
 
-- one feature per file
-- keep plans in chronological order
+- `docs/` for architecture notes and reference documentation
+- `implementation/` for feature plans that will be executed
+- keep plans in chronological order within each folder
 - link implementation notes back to the relevant plan
-- backend architecture map: [backend-overview.md](backend-overview.md)
-- frontend architecture map: [frontend-overview.md](frontend-overview.md)
-- run script orchestration: [run-sh-orchestration.md](run-sh-orchestration.md)
+
+## Documentation
+
+- backend architecture map: [docs/backend-overview.md](docs/backend-overview.md)
+- frontend architecture map: [docs/frontend-overview.md](docs/frontend-overview.md)
+- run script orchestration: [docs/run-sh-orchestration.md](docs/run-sh-orchestration.md)
+
+## Implementation
+
+- frontend/backend API connection plan: [implementation/frontend-backend-api-plan.md](implementation/frontend-backend-api-plan.md)

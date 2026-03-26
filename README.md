@@ -6,7 +6,8 @@ Predict is split into a SvelteKit frontend and a Python backend that scrapes liv
 
 - `frontend/` - SvelteKit app built with Bun, TypeScript, and Vite
 - `backend/` - FastAPI + Selenium backend
-- `plans/` - markdown documentation and architecture notes
+- `plans/docs/` - markdown documentation and architecture notes
+- `plans/implementation/` - feature plans that are ready to build
 - `run.sh` - convenience launcher for both apps
 
 ## How It Works
@@ -40,7 +41,7 @@ The main runtime flow is:
 
 ## Plans
 
-For a fuller backend architecture map, see [plans/backend-overview.md](plans/backend-overview.md).
+For a fuller backend architecture map, see [plans/docs/backend-overview.md](plans/docs/backend-overview.md).
 
 ## Getting Started
 

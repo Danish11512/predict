@@ -44,7 +44,7 @@ Page structure:
 - Hero section with app name, short description, and highlight chips
 - Secondary card that lists the next setup commands
 
-### Global Shell
+## Global Shell
 - `frontend/src/routes/+layout.svelte` imports `frontend/src/app.css` so all routes share the same styling
 - `frontend/src/app.html` defines the document shell, favicon, viewport meta tag, and SvelteKit placeholders
 

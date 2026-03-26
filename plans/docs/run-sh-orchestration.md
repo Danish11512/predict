@@ -7,7 +7,7 @@ Document how `run.sh` wires the frontend and backend together, and connect it to
 
 - `run.sh` - local orchestration for backend and frontend startup
 - `README.md` - repo entry point and setup directions
-- `plans/backend-overview.md` - backend API and runtime map
+- `plans/docs/backend-overview.md` - backend API and runtime map
 - `plans/README.md` - plans index
 
 Out of scope:
@@ -48,7 +48,7 @@ flowchart LR
   App --> State["backend/src/state.py"]
   State --> SSE["GET /stream"]
   App --> API["GET /live-games and POST /stream/response"]
-  Docs["plans/backend-overview.md"] -.-> App
+  Docs["plans/docs/backend-overview.md"] -.-> App
   Docs -.-> State
   Docs -.-> Runner
 ```
@@ -56,7 +56,7 @@ flowchart LR
 ## Documentation Map
 
 - `README.md` explains the repo layout and tells you where the backend API lives.
-- `plans/backend-overview.md` explains the backend modules, environment variables, API endpoints, and runtime flow.
+- `plans/docs/backend-overview.md` explains the backend modules, environment variables, API endpoints, and runtime flow.
 - This file explains how `run.sh` launches those components together.
 
 ## Execution Notes
