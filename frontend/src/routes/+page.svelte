@@ -2,10 +2,13 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { env } from '$env/dynamic/public';
 	import { fetchLiveGamesSnapshot } from '$lib/liveGamesApi';
+	import ErrorPage from '$lib/pages/ErrorPage.svelte';
+	import IntroPage from '$lib/pages/IntroPage.svelte';
+	import LiveGamesPage from '$lib/pages/LiveGamesPage.svelte';
+	import LoaderPage from '$lib/pages/LoaderPage.svelte';
 	import { openStream } from '$lib/sseConnection';
 	import { submitStreamResponse } from '$lib/streamResponse';
 	import type { LiveGamesPayload, StreamRequestEvent } from '$lib/streamTypes';
-	import Into from './into.svelte';
 
 	type Screen = 'intro' | 'loader' | 'liveGames' | 'error';
 
@@ -119,7 +122,6 @@
 
 	onMount(() => {
 		connectStream();
-		// Bootstrap / recovery priming; screen transitions still follow SSE (see plan §5).
 		void fetchLiveGamesSnapshot(apiBase()).catch(() => {});
 	});
 
@@ -131,59 +133,16 @@
 
 <main class="app-main">
 	{#if screen === 'intro'}
-		{#if currentRequest}
-			{#key currentRequest.request_id}
-				<Into
-					prompt={currentRequest.prompt}
-					field={currentRequest.field}
-					requestId={currentRequest.request_id}
-					disabled={otpSubmitting}
-					onsubmit={handleOtpSubmit}
-				/>
-			{/key}
-		{:else}
-			<div class="intro-card">
-				<h1 class="screen-title">Welcome</h1>
-				<p class="intro-wait">Waiting for sign-in or verification from the server…</p>
-			</div>
-		{/if}
+		<IntroPage
+			{currentRequest}
+			{otpSubmitting}
+			onOtpSubmit={handleOtpSubmit}
+		/>
 	{:else if screen === 'loader'}
-		<div class="loader-card">
-			<h1 class="screen-title">Loading live games</h1>
-			<p class="intro-wait">This can take a moment after verification.</p>
-			{#if progressPercent !== null}
-				<div class="loader-bar" role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100}>
-					<div class="loader-bar-fill" style="width: {progressPercent}%"></div>
-				</div>
-			{/if}
-		</div>
+		<LoaderPage {progressPercent} />
 	{:else if screen === 'liveGames'}
-		<h1 class="screen-title">Live games</h1>
-		{#if gamesData}
-			<p class="games-meta">
-				Updated: {gamesData.updated_utc ?? '—'} · {gamesData.games.length} game(s)
-			</p>
-			<ul class="games-list">
-				{#each gamesData.games as g, i (g.market_href ?? g.title ?? i)}
-					<li class="game-card">
-						<h2 class="game-title">{g.title ?? 'Market'}</h2>
-						<p class="game-sub">
-							{g.status ?? ''}
-							{#if g.game_clock}
-								· {g.game_clock}
-							{/if}
-						</p>
-					</li>
-				{/each}
-			</ul>
-		{:else}
-			<p class="intro-wait">No data yet.</p>
-		{/if}
+		<LiveGamesPage {gamesData} />
 	{:else if screen === 'error'}
-		<div class="error-card">
-			<h1 class="screen-title">Connection issue</h1>
-			<p class="error-text">{errorMessage}</p>
-			<button type="button" class="btn" onclick={handleRetryFromError}>Reconnect</button>
-		</div>
+		<ErrorPage message={errorMessage} onRetry={handleRetryFromError} />
 	{/if}
 </main>
