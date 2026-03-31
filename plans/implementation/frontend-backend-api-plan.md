@@ -1,146 +1,255 @@
 # Frontend / Backend API Connection Plan
 
-## Goal
-Map the existing backend APIs onto a three-screen frontend flow so the Svelte app knows when to show the OTP intro, the loading state, and the home screen that renders live game data.
+## Objective
+
+Build an implementation-ready sequence for the frontend around the **current backend contract** so app startup always begins at the OTP intro, then moves to the loader, then to live games as backend data arrives. This document is the single ordered checklist from initialization through live games.
+
+## Confirmed backend contract (ground truth)
+
+| Concern | Location | Contract |
+|--------|----------|----------|
+| SSE stream | `backend/src/app.py` — `GET /stream` | Events: `request`, `progress`, `data`, `error` |
+| OTP submit | `backend/src/app.py` — `POST /stream/response` | Body: `{ request_id, value }` |
+| Snapshot fallback | `backend/src/app.py` — `GET /live-games` | Bootstrap / recovery |
+| OTP queue | `backend/src/state.py` | Requests queued in-memory |
+
+No new endpoints are assumed; implementation must match this contract as-is.
+
+## Goal (summary)
+
+Map these APIs onto a three-screen frontend flow so the Svelte app shows OTP intro, loading state, then live games, with SSE as the primary realtime channel and `GET /live-games` for bootstrap and recovery.
 
 ## Scope
 
 In scope:
-- `backend/src/app.py` - API and SSE contract consumed by the frontend
-- `backend/src/state.py` - event shapes that drive OTP, progress, error, and data states
-- `backend/src/auth.py` - source of the OTP/verification request event
-- `backend/src/sports.py` - source of the live games payload used by the home screen
-- `frontend/src/routes/+page.svelte` - entry screen that will become the screen state controller
-- `frontend/src/routes/+layout.svelte` - shared app shell and global styles import
-- `frontend/src/lib/*` - client helpers, stores, and types for API consumption
-- `frontend/src/app.css` - styling for the three screens
+
+- `backend/src/app.py` — API and SSE contract consumed by the frontend
+- `backend/src/state.py` — event shapes; OTP replay compatibility for refresh (see implementation todos)
+- `backend/src/auth.py` — source of OTP/verification `request` events
+- `backend/src/sports.py` — source of live games payload for the home screen
+- `frontend/src/routes/+page.svelte` — single-route screen state controller
+- `frontend/src/routes/into.svelte` — intro / OTP UI component
+- `frontend/src/routes/+layout.svelte` — shared app shell and global styles import
+- `frontend/src/lib/*` — typed client helpers (SSE, OTP submit, snapshot); shared event/data types (no barrel `index.ts` per project rules)
+- `frontend/src/app.css` — styling for intro, loader, live games
+- `run.sh` — canonical startup: backend first, readiness wait, frontend with `PUBLIC_API_BASE_URL`
+- `.env.example` — template for all required keys; users copy to `.env`
 
 Out of scope:
+
 - Adding new backend endpoints
 - Replacing SSE with WebSockets or polling-only architecture
-- Persisting auth/session state beyond the current in-memory backend flow
-- Changing the backend login or scraping behavior unless a response shape needs a compatibility fix
+- Persisting auth/session beyond current in-memory backend flow
+- Changing backend login or scraping behavior except explicit compatibility fixes below
 
-## API Plan
+## Flow to implement
 
-### 1. `GET /stream`
-Primary realtime channel for the app.
+```mermaid
+flowchart TD
+appStart[AppStart] --> intro[IntroOtpScreen]
+intro -->|SSE request with request_id| otpInput[OtpInputReady]
+otpInput -->|POST /stream/response| loader[LoaderScreen]
+intro -->|No active request yet| introWaiting[IntroWaitingForRequest]
+loader -->|progress events| loader
+loader -->|SSE data event live games| liveGames[LiveGamesScreen]
+liveGames -->|new data events| liveGames
+liveGames -->|error or disconnect| recover[ReconnectAndSnapshotRecovery]
+recover --> loader
+```
 
-What it connects to in the frontend:
-- The screen-state controller on app load
-- The OTP intro screen
-- The loader screen
-- The home screen for live updates
+## API reference (frontend consumption)
 
-How it should connect:
-- Open one SSE connection as soon as the app mounts.
-- Parse event types and update a shared frontend store.
-- Treat this stream as the source of truth for login prompts, progress, backend errors, and live data refreshes.
+### `GET /stream`
 
-Event-to-UI mapping:
-- `request` -> show the OTP intro screen and bind the prompt, `request_id`, and optional `field` name.
-- `progress` -> switch or remain on the loader screen and update the progress indicator.
-- `data` -> hydrate the home screen with the latest payload and continue listening for updates.
-- `error` -> show an error state or retry prompt on top of the current screen.
+- Open **one** SSE connection on app mount.
+- Parse event types into a shared frontend model.
+- Mapping: `request` → intro/OTP; `progress` → loader; `data` → live games; `error` → recoverable error / reconnect path.
 
-### 2. `POST /stream/response`
-User input submission for a pending backend request.
+### `POST /stream/response`
 
-What it connects to in the frontend:
-- The OTP input on the intro screen
+- Body: `{ request_id, value }`.
+- Keep SSE open after submit.
+- **404**: treat as stale — clear local pending `request_id`, wait for next `request` event.
+- **New `request_id` while OTP visible**: replace prompt/input with the newest request.
 
-How it should connect:
-- Send `{ request_id, value }` when the user submits a code.
-- Keep the SSE connection open after submission so the app can receive `progress` and `data` events.
-- If the backend returns `404`, treat the request as stale and prompt the user to wait for a new request or reconnect.
+### `GET /live-games`
 
-UI behavior:
-- Disable the submit button while the request is in flight.
-- On success, move from the intro screen to the loader screen.
-- On failure, keep the OTP screen visible and show the error inline.
+- Fetch after SSE is established for **bootstrap and recovery** (reconnect, error recovery). Minimum contract: snapshot + SSE recovery; optional periodic polling is a **product decision** once the stream is stable (see Open questions).
+- After OTP, **do not** transition from loader to live games on snapshot alone — wait for **SSE `data`** with live games.
+- Expected shape: `updated_utc` (ISO or `null`), `games` (array, possibly empty).
 
-### 3. `GET /live-games`
-Snapshot endpoint for bootstrapping and recovery.
+## Implementation checklist (ordered)
 
-What it connects to in the frontend:
-- The home screen as the initial data source
-- The loader screen as a fallback when the SSE stream has not yet produced data
+Use this section as the authoritative todo list. Complete in order unless noted.
 
-How it should connect:
-- Fetch once after the SSE connection is established.
-- Use the response to render the home screen immediately if data already exists.
-- Re-fetch on reconnect or manual retry so the home screen can recover from a dropped stream without waiting for the next SSE `data` event.
+### 1. Bootstrap env and runtime contract
 
-Response contract the frontend should expect:
-- `updated_utc`: ISO timestamp or `null`
-- `games`: array of live game records, possibly empty
+- [ ] Require `.env` before first run; document copying from `.env.example`.
+- [ ] Document one frontend API base: `PUBLIC_API_BASE_URL` (browser → backend).
+- [ ] Document backend credentials and tuning vars (see `.env.example` below).
+- [ ] Document that **`run.sh` is the canonical startup path** for local full stack.
 
-## Flow Analysis
+**Validation**
 
-### Screen 1 - Intro / OTP
-1. The app loads and opens the SSE stream.
-2. If the backend emits a `request` event, the intro screen becomes visible.
-3. The screen displays the backend prompt and a single OTP input.
-4. The user submits the code, which posts to `POST /stream/response`.
+- [ ] A new developer can follow docs and create `.env` from `.env.example` without guessing variable names.
+- [ ] `PUBLIC_API_BASE_URL` is documented as the only browser-facing backend base the frontend uses.
 
-### Screen 2 - Loader
-1. After OTP submission, the app shows a loader while the backend finishes login and scraping.
-2. `progress` events update the loader state if the backend emits percentages.
-3. A successful `data` event or a non-empty `GET /live-games` response moves the app to the home screen.
+### 2. Create `.env.example` with all required user-provided keys
 
-### Screen 3 - Home
-1. The home screen renders the `games` array from `GET /live-games` or the most recent SSE `data` event.
-2. The screen remains subscribed to `GET /stream` so future `data` events update the list in place.
-3. If the stream drops, the app should fall back to a snapshot refresh instead of blanking the home view.
+- [ ] Add file at repo root with at least:
 
-### Error Paths
-- Unknown `request_id` from `POST /stream/response` should be treated as a stale request, not a fatal app crash.
-- `error` SSE events should surface a recoverable UI message unless the backend clearly indicates a terminal failure.
-- Empty `games` data should keep the loader visible until the first useful snapshot arrives.
+```dotenv
+# Backend auth
+KALSHI_EMAIL=
+KALSHI_PASSWORD=
 
-## Implementation Steps
+# Backend runtime
+BASE_URL=https://kalshi.com
+ENV=dev
+IS_CONTAINER=false
+LATENCY_MS=0
+VERIFY_WAIT_TIMEOUT=120
+LIVE_GAMES_POLL_SEC=5
 
-### Step 1 - Define the frontend API contract
-- Files: `frontend/src/lib/*`
-- Action: add typed helpers for SSE parsing, snapshot fetches, and OTP response submission.
-- Test criteria: the frontend can represent `request`, `progress`, `error`, and `data` events with one shared shape.
+# Local ports
+PORT=8000
+FRONTEND_PORT=5173
 
-### Step 2 - Introduce a screen-state store
-- Files: `frontend/src/lib/*`, `frontend/src/routes/+page.svelte`
-- Action: model the three-screen flow as a small state machine with explicit transitions for `intro`, `loader`, and `home`.
-- Test criteria: screen transitions are driven by backend events, not hard-coded timers.
+# Frontend -> backend base URL
+PUBLIC_API_BASE_URL=http://localhost:8000
+```
 
-### Step 3 - Wire the OTP intro screen
-- Files: `frontend/src/routes/+page.svelte`, `frontend/src/app.css`
-- Action: render the prompt from the SSE `request` event and submit the code to `POST /stream/response`.
-- Test criteria: a received request event makes the OTP form appear and submit payloads include the matching `request_id`.
+- [ ] Note in README or plan: copy to `.env` and fill secrets locally; never commit `.env`.
 
-### Step 4 - Wire the loader screen
-- Files: `frontend/src/routes/+page.svelte`, `frontend/src/app.css`
-- Action: show a loading state while waiting for `progress` or the first usable data snapshot.
-- Test criteria: progress updates change the loader UI and the screen persists until data is available.
+**Validation**
 
-### Step 5 - Wire the home screen
-- Files: `frontend/src/routes/+page.svelte`, `frontend/src/app.css`
-- Action: render live games from `GET /live-games` and update the list when SSE `data` events arrive.
-- Test criteria: the home view renders the snapshot payload and stays in sync with later stream updates.
+- [ ] `.env.example` exists at repo root and lists every key the backend and `run.sh` expect for local full stack.
+- [ ] Copying to `.env` and filling placeholders allows backend and frontend to start without missing-env failures.
 
-### Step 6 - Add reconnect and fallback behavior
-- Files: `frontend/src/lib/*`, `frontend/src/routes/+page.svelte`
-- Action: on SSE disconnect or load failure, retry the stream and use `GET /live-games` as a recovery path.
-- Test criteria: a dropped stream does not force the app back to an empty state.
+### 3. Update `run.sh` (plan requirements)
+
+- [ ] Startup order: start **backend first**.
+- [ ] Wait for backend readiness (loop on `GET /live-games` or equivalent health until success).
+- [ ] Start frontend with `PUBLIC_API_BASE_URL` exported (or passed) so the client targets the correct backend.
+- [ ] Keep existing dependency bootstrap if present; on readiness **timeout**, exit non-zero with **clear stderr** message.
+
+**Validation**
+
+- [ ] From a clean shell, `./run.sh` starts backend before frontend and frontend receives correct `PUBLIC_API_BASE_URL`.
+- [ ] Stopping the backend and re-running shows readiness wait; killing backend mid-wait eventually hits timeout with a clear stderr message (if timeout is implemented).
+
+### 4. Define frontend API / client layer first (`frontend/src/lib/`)
+
+- [ ] SSE: connect, parse events, lifecycle (close on unmount / single subscription).
+- [ ] `POST /stream/response` helper with typed body and error handling (including 404 stale path).
+- [ ] `GET /live-games` snapshot fetch with shared response types.
+- [ ] Shared TypeScript types for stream events and game payload — **no new endpoint assumptions**.
+
+**Validation**
+
+- [ ] Unit or manual check: parsed SSE payloads map to typed events for `request`, `progress`, `data`, `error`.
+- [ ] OTP helper returns distinct handling for success vs **404** (stale request).
+- [ ] Snapshot helper parses `updated_utc` and `games` without runtime type surprises.
+
+### 5. App state machine (single route: `+page.svelte`)
+
+- [ ] States: `intro`, `loader`, `liveGames`, `error` (or equivalent naming consistent with code).
+- [ ] On mount: open SSE immediately; fetch snapshot once for bootstrap/recovery; default visible screen is **intro** (waiting or OTP ready per events).
+- [ ] Transition rules: avoid flicker when snapshot has data but intro must show first — document explicit rule (e.g. intro takes precedence until OTP resolved or no pending auth, then loader until SSE `data`).
+
+**Validation**
+
+- [ ] On load, only one SSE connection is active (verify in Network tab or dev hook).
+- [ ] State matches screen: intro / loader / live games / error are mutually consistent with events.
+- [ ] Snapshot fetch does not skip intro when a pending OTP is still required.
+
+### 6. OTP survives refresh (backend + frontend)
+
+**Backend (compatibility):**
+
+- [ ] Keep **one** unresolved active OTP `request` **replayable** for newly connected SSE clients.
+- [ ] If a newer request is emitted, invalidate/replace the older unresolved request.
+
+**Frontend:**
+
+- [ ] On submit **404**: clear local pending request; wait for next `request` event.
+- [ ] On new `request_id` while input visible: replace UI with newest request.
+
+**Validation**
+
+- [ ] Refresh mid-OTP: SSE reconnect shows the same unresolved request (or replaced newest request per backend rules).
+- [ ] Submit with stale id → 404 path clears local pending id and next `request` repopulates the form.
+- [ ] Two rapid requests from backend: UI always shows the latest `request_id`.
+
+### 7. Intro / OTP UI
+
+- [ ] Implement or wire `frontend/src/routes/into.svelte` from `+page.svelte`.
+- [ ] Bind prompt, `request_id`, optional `field` from `request` event.
+- [ ] When the OTP field contains **four digits**, automatically `POST /stream/response` (no separate submit step required unless you add an optional confirm — default is auto-send on fourth digit).
+- [ ] While the OTP request is in flight, ignore duplicate auto-submits or block input per UX choice; on success → **loader**.
+
+### 8. Loader screen
+
+- [ ] Enter immediately after the OTP `POST` succeeds (or when flow is progress-only without OTP, per state rules).
+- [ ] Stay on the loader until **SSE `data`** delivers live games from the backend — **not** solely because `GET /live-games` returned rows.
+- [ ] Still show `progress` on the loader when those events arrive.
+- [ ] Reserve hooks for animation; no animation implementation required in first pass.
+
+**Validation**
+
+- [ ] Entering four digits triggers exactly one submit with correct `request_id` and value; UI switches to loader without an extra click.
+- [ ] If snapshot returns games before SSE `data`, loader remains until `data` arrives.
+- [ ] After `data`, live games screen shows content consistent with that event.
+
+### 9. Live games screen
+
+- [ ] Render games entirely from backend payload (snapshot + latest SSE `data`).
+- [ ] Keep subscribed to SSE `data` updates.
+- [ ] On disconnect: reconnect with backoff; refresh via `GET /live-games`.
+- [ ] **Avoid duplicate SSE subscriptions** on reconnect (single connection or explicit teardown before new connect).
+
+**Validation**
+
+- [ ] Live games list updates in place when a second SSE `data` event arrives.
+- [ ] Simulated SSE drop: reconnect uses backoff; `GET /live-games` refresh runs as recovery aid without spawning duplicate streams.
+- [ ] Games render only from backend-shaped payload (no client-invented fields).
+
+### 10. End-to-end validation (manual / QA)
+
+Cross-cutting checks in addition to per-step validation above:
+
+- [ ] **Startup**: `run.sh` → when backend emits `request`, intro OTP is visible.
+- [ ] **Refresh**: unresolved OTP still visible after refresh; four-digit auto-submit still works.
+- [ ] **Replacement**: backend issues newer request → old OTP replaced in UI.
+- [ ] **Progress**: loader reflects `progress` events before `data`.
+- [ ] **SSE-first exit from loader**: transition to live games coincides with SSE `data`, not snapshot alone.
 
 ## Constraints
 
-- Keep the backend contract unchanged unless the frontend needs an explicit compatibility fix.
-- Use one SSE connection per app session instead of separate connections per screen.
-- Prefer a single-page state machine over route-based screen switching unless routing becomes necessary later.
-- Preserve the existing backend CORS allowance so local frontend dev on a separate port continues to work.
-- Keep the home screen resilient to empty payloads and delayed startup.
+- Backend contract unchanged unless a documented compatibility fix is required (e.g. OTP replay).
+- One SSE connection per session; no duplicate subscriptions after reconnect logic.
+- Single-page state machine on `+page.svelte` unless routing is explicitly added later.
+- Preserve CORS for local dev (frontend port ≠ backend port).
+- Home/live games resilient to empty payloads and delayed startup.
 
-## Risks & Open Questions
+## Risks to track
 
-- Should the intro, loader, and home screens be separate routes or a single route with internal state? The current plan assumes a single route with screen states.
-- Should the home screen keep polling `GET /live-games` periodically, or is SSE-only refresh sufficient once the stream is stable?
-- Does the OTP prompt always arrive before the first `data` payload, or do we need to handle a snapshot-first startup path?
-- Should the frontend keep the OTP form visible after submission until the backend confirms progression, or immediately switch to the loader?
+- Current backend request buffering may not guarantee OTP replay across mid-request **refresh** until the compatibility step in §6 is done.
+- Showing intro first while supporting snapshot-first data needs **explicit transition rules** to avoid flicker.
+- SSE disconnect handling must **not** create duplicate stream subscriptions.
+
+## Open questions and decided behavior
+
+1. **Refresh once the stream is stable:** Use **SSE-only** when stable — exact policy is a **product decision**. **Minimum** implementation remains: snapshot fetch + SSE for recovery and bootstrap (no requirement to add polling until product asks for it).
+
+2. **OTP → loader → live games (decided):** Detect when **four digits** are entered; then send the OTP to the backend and switch to the **loader**. Stay on the loader until **live games arrive via SSE** (`data` event). Do not leave the loader for live games based on `GET /live-games` alone after OTP in this flow.
+
+## Definition of done (for this plan document)
+
+This plan doc is “done” when:
+
+- It contains the **ordered checklist** from env/bootstrap through live games (this file).
+- It specifies **`.env.example`** contents and exact **`run.sh`** behaviors.
+- It specifies **refresh-safe OTP** lifecycle and **stale/new request** rules tied to existing APIs.
+
+Implementation of the codebase is complete when all checklist items above are checked in development, **each step’s Validation subsection passes**, and §10 end-to-end checks pass.
