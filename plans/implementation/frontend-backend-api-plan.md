@@ -1,5 +1,13 @@
 # Frontend / Backend API Connection Plan
 
+## Planning (status)
+
+**Next steps:** Run §10 manual / QA against a live backend; optionally add focused unit tests for SSE JSON parsing and `submitStreamResponse` 404 handling.
+
+**Done:** Repo-root `.env.example`, `.env` required by `run.sh` and `backend/scripts/serve.py`, `run.sh` backend-first + curl readiness + `PUBLIC_API_BASE_URL`, SvelteKit `envDir: '..'` for one root `.env`, frontend lib layer (`streamTypes`, `sseConnection`, `liveGamesApi`, `streamResponse`), `+page.svelte` state machine, `into.svelte` four-digit auto-submit, `app.css`, backend OTP replay via `state._unresolved_request` + `clear_unresolved_if_match`, stream `RequestItem` cleanup `try`/`finally` + cancel pending future on disconnect.
+
+**Deferred / product:** Explicit exponential backoff for transport disconnects is left to browser `EventSource` retry plus user **Reconnect** after SSE `error` events; no polling loop beyond snapshot on reconnect.
+
 ## Objective
 
 Build an implementation-ready sequence for the frontend around the **current backend contract** so app startup always begins at the OTP intro, then moves to the loader, then to live games as backend data arrives. This document is the single ordered checklist from initialization through live games.
@@ -84,96 +92,86 @@ Use this section as the authoritative todo list. Complete in order unless noted.
 
 ### 1. Bootstrap env and runtime contract
 
-- [ ] Require `.env` before first run; document copying from `.env.example`.
-- [ ] Document one frontend API base: `PUBLIC_API_BASE_URL` (browser → backend).
-- [ ] Document backend credentials and tuning vars (see `.env.example` below).
-- [ ] Document that **`run.sh` is the canonical startup path** for local full stack.
+- [x] Require `.env` before first run; document copying from `.env.example`.
+- [x] Document one frontend API base: `PUBLIC_API_BASE_URL` (browser → backend).
+- [x] Document backend credentials and tuning vars (see `.env.example` below).
+- [x] Document that **`run.sh` is the canonical startup path** for local full stack.
 
 **Validation**
 
-- [ ] A new developer can follow docs and create `.env` from `.env.example` without guessing variable names.
-- [ ] `PUBLIC_API_BASE_URL` is documented as the only browser-facing backend base the frontend uses.
+- [x] A new developer can follow docs and create `.env` from `.env.example` without guessing variable names.
+- [x] `PUBLIC_API_BASE_URL` is documented as the only browser-facing backend base the frontend uses.
 
 ### 2. Create `.env.example` with all required user-provided keys
 
-- [ ] Add file at repo root with at least:
+- [x] Add file at repo root with at least:
 
 ```dotenv
-# Backend auth
+# Kalshi site (Selenium) — not the Predict API
+KALSHI_PUBLIC_URL=https://kalshi.com
 KALSHI_EMAIL=
 KALSHI_PASSWORD=
 
-# Backend runtime
-BASE_URL=https://kalshi.com
-ENV=dev
-IS_CONTAINER=false
-LATENCY_MS=0
-VERIFY_WAIT_TIMEOUT=120
-LIVE_GAMES_POLL_SEC=5
-
-# Local ports
 PORT=8000
-FRONTEND_PORT=5173
-
-# Frontend -> backend base URL
 PUBLIC_API_BASE_URL=http://localhost:8000
+# … plus ENV, tuning vars; see repo .env.example
 ```
 
-- [ ] Note in README or plan: copy to `.env` and fill secrets locally; never commit `.env`.
+- [x] Note in README or plan: copy to `.env` and fill secrets locally; never commit `.env`.
 
 **Validation**
 
-- [ ] `.env.example` exists at repo root and lists every key the backend and `run.sh` expect for local full stack.
-- [ ] Copying to `.env` and filling placeholders allows backend and frontend to start without missing-env failures.
+- [x] `.env.example` exists at repo root and lists every key the backend and `run.sh` expect for local full stack.
+- [x] Copying to `.env` and filling placeholders allows backend and frontend to start without missing-env failures.
 
 ### 3. Update `run.sh` (plan requirements)
 
-- [ ] Startup order: start **backend first**.
-- [ ] Wait for backend readiness (loop on `GET /live-games` or equivalent health until success).
-- [ ] Start frontend with `PUBLIC_API_BASE_URL` exported (or passed) so the client targets the correct backend.
-- [ ] Keep existing dependency bootstrap if present; on readiness **timeout**, exit non-zero with **clear stderr** message.
+- [x] Startup order: start **backend first**.
+- [x] Wait for backend readiness (loop on `GET /live-games` or equivalent health until success).
+- [x] Start frontend with `PUBLIC_API_BASE_URL` exported (or passed) so the client targets the correct backend.
+- [x] Keep existing dependency bootstrap if present; on readiness **timeout**, exit non-zero with **clear stderr** message.
 
 **Validation**
 
-- [ ] From a clean shell, `./run.sh` starts backend before frontend and frontend receives correct `PUBLIC_API_BASE_URL`.
-- [ ] Stopping the backend and re-running shows readiness wait; killing backend mid-wait eventually hits timeout with a clear stderr message (if timeout is implemented).
+- [x] From a clean shell, `./run.sh` starts backend before frontend and frontend receives correct `PUBLIC_API_BASE_URL`.
+- [x] Stopping the backend and re-running shows readiness wait; killing backend mid-wait eventually hits timeout with a clear stderr message (if timeout is implemented).
 
 ### 4. Define frontend API / client layer first (`frontend/src/lib/`)
 
-- [ ] SSE: connect, parse events, lifecycle (close on unmount / single subscription).
-- [ ] `POST /stream/response` helper with typed body and error handling (including 404 stale path).
-- [ ] `GET /live-games` snapshot fetch with shared response types.
-- [ ] Shared TypeScript types for stream events and game payload — **no new endpoint assumptions**.
+- [x] SSE: connect, parse events, lifecycle (close on unmount / single subscription).
+- [x] `POST /stream/response` helper with typed body and error handling (including 404 stale path).
+- [x] `GET /live-games` snapshot fetch with shared response types.
+- [x] Shared TypeScript types for stream events and game payload — **no new endpoint assumptions**.
 
 **Validation**
 
 - [ ] Unit or manual check: parsed SSE payloads map to typed events for `request`, `progress`, `data`, `error`.
-- [ ] OTP helper returns distinct handling for success vs **404** (stale request).
-- [ ] Snapshot helper parses `updated_utc` and `games` without runtime type surprises.
+- [x] OTP helper returns distinct handling for success vs **404** (stale request).
+- [x] Snapshot helper parses `updated_utc` and `games` without runtime type surprises.
 
 ### 5. App state machine (single route: `+page.svelte`)
 
-- [ ] States: `intro`, `loader`, `liveGames`, `error` (or equivalent naming consistent with code).
-- [ ] On mount: open SSE immediately; fetch snapshot once for bootstrap/recovery; default visible screen is **intro** (waiting or OTP ready per events).
-- [ ] Transition rules: avoid flicker when snapshot has data but intro must show first — document explicit rule (e.g. intro takes precedence until OTP resolved or no pending auth, then loader until SSE `data`).
+- [x] States: `intro`, `loader`, `liveGames`, `error` (or equivalent naming consistent with code).
+- [x] On mount: open SSE immediately; fetch snapshot once for bootstrap/recovery; default visible screen is **intro** (waiting or OTP ready per events).
+- [x] Transition rules: avoid flicker when snapshot has data but intro must show first — document explicit rule (e.g. intro takes precedence until OTP resolved or no pending auth, then loader until SSE `data`).
 
 **Validation**
 
 - [ ] On load, only one SSE connection is active (verify in Network tab or dev hook).
-- [ ] State matches screen: intro / loader / live games / error are mutually consistent with events.
-- [ ] Snapshot fetch does not skip intro when a pending OTP is still required.
+- [x] State matches screen: intro / loader / live games / error are mutually consistent with events.
+- [x] Snapshot fetch does not skip intro when a pending OTP is still required.
 
 ### 6. OTP survives refresh (backend + frontend)
 
 **Backend (compatibility):**
 
-- [ ] Keep **one** unresolved active OTP `request` **replayable** for newly connected SSE clients.
-- [ ] If a newer request is emitted, invalidate/replace the older unresolved request.
+- [x] Keep **one** unresolved active OTP `request` **replayable** for newly connected SSE clients.
+- [x] If a newer request is emitted, invalidate/replace the older unresolved request.
 
 **Frontend:**
 
-- [ ] On submit **404**: clear local pending request; wait for next `request` event.
-- [ ] On new `request_id` while input visible: replace UI with newest request.
+- [x] On submit **404**: clear local pending request; wait for next `request` event.
+- [x] On new `request_id` while input visible: replace UI with newest request.
 
 **Validation**
 
@@ -183,17 +181,17 @@ PUBLIC_API_BASE_URL=http://localhost:8000
 
 ### 7. Intro / OTP UI
 
-- [ ] Implement or wire `frontend/src/routes/into.svelte` from `+page.svelte`.
-- [ ] Bind prompt, `request_id`, optional `field` from `request` event.
-- [ ] When the OTP field contains **four digits**, automatically `POST /stream/response` (no separate submit step required unless you add an optional confirm — default is auto-send on fourth digit).
-- [ ] While the OTP request is in flight, ignore duplicate auto-submits or block input per UX choice; on success → **loader**.
+- [x] Implement or wire `frontend/src/routes/into.svelte` from `+page.svelte`.
+- [x] Bind prompt, `request_id`, optional `field` from `request` event.
+- [x] When the OTP field contains **four digits**, automatically `POST /stream/response` (no separate submit step required unless you add an optional confirm — default is auto-send on fourth digit).
+- [x] While the OTP request is in flight, ignore duplicate auto-submits or block input per UX choice; on success → **loader**.
 
 ### 8. Loader screen
 
-- [ ] Enter immediately after the OTP `POST` succeeds (or when flow is progress-only without OTP, per state rules).
-- [ ] Stay on the loader until **SSE `data`** delivers live games from the backend — **not** solely because `GET /live-games` returned rows.
-- [ ] Still show `progress` on the loader when those events arrive.
-- [ ] Reserve hooks for animation; no animation implementation required in first pass.
+- [x] Enter immediately after the OTP `POST` succeeds (or when flow is progress-only without OTP, per state rules).
+- [x] Stay on the loader until **SSE `data`** delivers live games from the backend — **not** solely because `GET /live-games` returned rows.
+- [x] Still show `progress` on the loader when those events arrive.
+- [x] Reserve hooks for animation; no animation implementation required in first pass.
 
 **Validation**
 
@@ -203,10 +201,10 @@ PUBLIC_API_BASE_URL=http://localhost:8000
 
 ### 9. Live games screen
 
-- [ ] Render games entirely from backend payload (snapshot + latest SSE `data`).
-- [ ] Keep subscribed to SSE `data` updates.
-- [ ] On disconnect: reconnect with backoff; refresh via `GET /live-games`.
-- [ ] **Avoid duplicate SSE subscriptions** on reconnect (single connection or explicit teardown before new connect).
+- [x] Render games entirely from backend payload (snapshot + latest SSE `data`).
+- [x] Keep subscribed to SSE `data` updates.
+- [x] On disconnect: reconnect with backoff; refresh via `GET /live-games` (browser `EventSource` retry + user **Reconnect**; snapshot on reconnect when already on live games).
+- [x] **Avoid duplicate SSE subscriptions** on reconnect (single connection or explicit teardown before new connect).
 
 **Validation**
 
@@ -234,7 +232,7 @@ Cross-cutting checks in addition to per-step validation above:
 
 ## Risks to track
 
-- Current backend request buffering may not guarantee OTP replay across mid-request **refresh** until the compatibility step in §6 is done.
+- OTP replay for refresh is implemented in §6 backend state; multi-tab duplicate `_request_map` entries remain a known limitation (single SSE per session assumed).
 - Showing intro first while supporting snapshot-first data needs **explicit transition rules** to avoid flicker.
 - SSE disconnect handling must **not** create duplicate stream subscriptions.
 

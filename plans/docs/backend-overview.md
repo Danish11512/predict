@@ -81,7 +81,8 @@ Errors:
 Loaded from repo root `.env` by `backend/src/config.py`.
 
 Known variables:
-- `BASE_URL` - site root, defaults to `https://kalshi.com`
+- `KALSHI_PUBLIC_URL` - **Kalshi website** root for Selenium (not the Predict API). Legacy: `BASE_URL` if unset; default `https://kalshi.com`
+- `PUBLIC_API_BASE_URL` - used by the **frontend only**; origin of this FastAPI app (not Kalshi)
 - `KALSHI_EMAIL` - login email
 - `KALSHI_PASSWORD` - login password
 - `ENV` - when set to `prod`, the browser runs headless
@@ -89,7 +90,7 @@ Known variables:
 - `LATENCY_MS` - upper bound for randomized action delay
 - `VERIFY_WAIT_TIMEOUT` - wait time for returning to the site after login/verification
 - `LIVE_GAMES_POLL_SEC` - poll interval for live market refreshes
-- `PORT` - server port used by `backend/scripts/serve.py`
+- `PORT` - **this FastAPI process** listen port (`serve.py`), not Kalshi’s hostname
 
 ## Mermaid
 

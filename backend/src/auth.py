@@ -1,4 +1,7 @@
-"""XPath-based login; step_delay before actions; wait for return to Kalshi."""
+"""XPath-based login against the **Kalshi website** (driver current_url on kalshi.com).
+
+Unrelated to `PUBLIC_API_BASE_URL` / this repo's FastAPI server.
+"""
 import logging
 import sys
 from selenium.webdriver.common.by import By
@@ -81,6 +84,7 @@ def login(driver, stop_event=None) -> bool:
         seen_navigation_away = [False]  # True once we've left the pre-submit page (e.g. to verification)
 
         def returned_to_kalshi(drv):
+            # Driver URL is the live Kalshi site, not our FastAPI `PORT` / PUBLIC_API_BASE_URL.
             url = (drv.current_url or "").lower()
             if url != url_before_submit.lower() or any(f in url for f in VERIFICATION_PATH_FRAGMENTS):
                 seen_navigation_away[0] = True

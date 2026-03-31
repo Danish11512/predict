@@ -1,4 +1,7 @@
-"""FastAPI app: GET /live-games snapshot, GET /stream SSE; runner in daemon thread."""
+"""Predict **local API** (this uvicorn process): `/live-games`, `/stream`, `/stream/response`.
+
+Browser automation uses **Kalshi's public site** (`KALSHI_PUBLIC_URL` / `config.kalshi_public_url`), not these URLs.
+"""
 import asyncio
 import json
 import threading
@@ -78,7 +81,8 @@ async def stream() -> StreamingResponse:
                 if isinstance(item, DataItem):
                     yield f"event: data\ndata: {json.dumps(item.payload)}\n\n"
                 elif isinstance(item, RequestItem):
-                    future: asyncio.Future[None] = asyncio.get_event_loop().create_future()
+                    loop = asyncio.get_running_loop()
+                    future: asyncio.Future[None] = loop.create_future()
                     async with _request_map_lock:
                         _request_map[item.request_id] = (future, item.response_holder)
                     request_data = {
@@ -86,10 +90,18 @@ async def stream() -> StreamingResponse:
                         "prompt": item.prompt,
                         "field": item.field_name,
                     }
-                    yield f"event: request\ndata: {json.dumps(request_data)}\n\n"
-                    await future
-                    async with _request_map_lock:
-                        _request_map.pop(item.request_id, None)
+                    try:
+                        yield f"event: request\ndata: {json.dumps(request_data)}\n\n"
+                        await future
+                    except asyncio.CancelledError:
+                        raise
+                    finally:
+                        async with _request_map_lock:
+                            entry = _request_map.pop(item.request_id, None)
+                        if entry is not None:
+                            fut, _ = entry
+                            if not fut.done():
+                                fut.cancel()
                 elif isinstance(item, ProgressItem):
                     yield f"event: progress\ndata: {json.dumps({'percent': item.percent})}\n\n"
                 elif isinstance(item, ErrorItem):
@@ -116,4 +128,5 @@ async def stream_response(body: StreamResponseBody) -> dict:
     if not future.done():
         future.set_result(None)
     await asyncio.to_thread(response_holder.put, body.value)
+    state.clear_unresolved_if_match(body.request_id)
     return {"ok": True}
