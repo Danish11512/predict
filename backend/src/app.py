@@ -2,6 +2,8 @@
 
 Browser automation uses **Kalshi's public site** (`KALSHI_PUBLIC_URL` / `config.kalshi_public_url`), not these URLs.
 """
+from __future__ import annotations
+
 import asyncio
 import json
 import threading

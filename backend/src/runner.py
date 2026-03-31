@@ -1,4 +1,6 @@
 """Orchestrate: create driver, login, navigate to sports, poll live games and optionally notify via callback."""
+from __future__ import annotations
+
 import sys
 import threading
 import time

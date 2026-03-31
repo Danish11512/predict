@@ -1,4 +1,6 @@
 """Shared state: latest payload and SSE subscriber queues (thread-safe)."""
+from __future__ import annotations
+
 import asyncio
 import queue as queue_module
 import threading
