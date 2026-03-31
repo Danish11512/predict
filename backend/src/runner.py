@@ -1,4 +1,6 @@
 """Orchestrate: create driver, login, navigate to sports, poll live games and optionally notify via callback."""
+from __future__ import annotations
+
 import sys
 import threading
 import time
@@ -26,8 +28,8 @@ def run(
 ) -> None:
     drv = driver_mod.create_driver()
     try:
-        print(f"Opening {config.base_url}", file=sys.stderr)
-        drv.get(config.base_url)
+        print(f"Opening Kalshi site {config.kalshi_public_url}", file=sys.stderr)
+        drv.get(config.kalshi_public_url)
         utils.step_delay()
         try:
             if not auth.login(drv, stop_event=stop_event):
@@ -37,7 +39,7 @@ def run(
             print("Shutdown requested during login.", file=sys.stderr)
             return
         print("Login succeeded.", file=sys.stderr)
-        sports_url = config.base_url.rstrip("/") + SPORTS_CATEGORY_PATH
+        sports_url = config.kalshi_public_url.rstrip("/") + SPORTS_CATEGORY_PATH
         print("Navigating to /category/sports/all-sports", file=sys.stderr)
         drv.get(sports_url)
         utils.step_delay()
