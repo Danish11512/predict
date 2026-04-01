@@ -131,27 +131,16 @@
 	});
 </script>
 
-<main class="app-main">
-	{#if screen === 'intro'}
-		<IntroPage
-			{currentRequest}
-			{otpSubmitting}
-			onOtpSubmit={handleOtpSubmit}
-		/>
-	{:else if screen === 'loader'}
-		<LoaderPage {progressPercent} />
-	{:else if screen === 'liveGames'}
-		<LiveGamesPage {gamesData} />
-	{:else if screen === 'error'}
-		<ErrorPage message={errorMessage} onRetry={handleRetryFromError} />
-	{/if}
-</main>
-
-<style>
-	.app-main {
-		width: 100%;
-		min-height: 100dvh;
-		padding-inline: 50px;
-		box-sizing: border-box;
-	}
-</style>
+{#if screen === 'intro'}
+	<IntroPage
+		{currentRequest}
+		{otpSubmitting}
+		onOtpSubmit={handleOtpSubmit}
+	/>
+{:else if screen === 'loader'}
+	<LoaderPage {progressPercent} />
+{:else if screen === 'liveGames'}
+	<LiveGamesPage {gamesData} />
+{:else if screen === 'error'}
+	<ErrorPage message={errorMessage} onRetry={handleRetryFromError} />
+{/if}

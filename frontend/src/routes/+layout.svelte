@@ -10,15 +10,26 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<AppHeader />
+<div class="app-shell">
+	<AppHeader />
 
-<main class="app-main">
-	{@render children()}
-</main>
+	<main class="app-main">
+		{@render children()}
+	</main>
+</div>
 
 <style>
+	.app-shell {
+		min-height: 100dvh;
+		display: flex;
+		flex-direction: column;
+	}
+
 	.app-main {
-		min-height: 100%;
+		flex: 1 1 auto;
+		min-height: 0;
+		padding-inline: 50px;
+		box-sizing: border-box;
 		background: var(--app-bg);
 		color: var(--app-fg);
 	}
