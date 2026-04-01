@@ -22,6 +22,14 @@
 
 	type Screen = (typeof Screen)[keyof typeof Screen]
 
+	const LoaderTone = {
+		Neutral: null,
+		Error: 'error',
+		Success: 'success'
+	} as const
+
+	type LoaderTone = (typeof LoaderTone)[keyof typeof LoaderTone]
+
 	function apiBase(): string {
 		const b = env.PUBLIC_API_BASE_URL;
 		return (typeof b === 'string' && b.length > 0 ? b : 'http://localhost:8000').replace(/\/$/, '');
@@ -31,6 +39,8 @@
 	let currentRequest = $state<StreamRequestEvent | null>(null);
 	let hasOpenOtp = $state(false);
 	let errorMessage = $state('');
+	let loaderTone = $state<LoaderTone>(LoaderTone.Neutral);
+	let liveGamesSuccessTick = $state(0);
 	let otpSubmitting = $state(false);
 
 	let stopStream: (() => void) | null = null;
@@ -38,6 +48,7 @@
 	function connectStream() {
 		stopStream?.();
 		stopStream = null;
+		liveGamesSuccessTick = 0;
 		const base = apiBase();
 		const { close } = openStream(base, {
 			onRequest: (ev) => {
@@ -54,12 +65,15 @@
 				}
 				liveGamesData.set(payload);
 				hadLiveGames.set(true);
-				if (screen === Screen.Loader || screen === Screen.LiveGames || screen === Screen.Intro) {
-					screen = Screen.LiveGames;
+				if (screen === Screen.Loader && loaderTone === LoaderTone.Success) {
+					liveGamesSuccessTick += 1;
+					return;
 				}
+				if (screen === Screen.Loader || screen === Screen.LiveGames || screen === Screen.Intro) screen = Screen.LiveGames;
 			},
 			onError: (ev) => {
 				errorMessage = ev.message || ev.code;
+				loaderTone = LoaderTone.Error;
 				screen = Screen.Error;
 				stopStream?.();
 				stopStream = null;
@@ -79,6 +93,9 @@
 		if (res.ok) {
 			hasOpenOtp = false;
 			currentRequest = null;
+			errorMessage = '';
+			loaderTone = LoaderTone.Success;
+			liveGamesSuccessTick = 0;
 			screen = Screen.Loader;
 			return;
 		}
@@ -88,11 +105,20 @@
 			return;
 		}
 		errorMessage = res.message;
+		loaderTone = LoaderTone.Error;
 		screen = Screen.Error;
+	}
+
+	function handleLoaderReady() {
+		if (screen !== Screen.Loader) return;
+		loaderTone = LoaderTone.Neutral;
+		screen = Screen.LiveGames;
 	}
 
 	function handleRetryFromError() {
 		errorMessage = '';
+		loaderTone = LoaderTone.Neutral;
+		liveGamesSuccessTick = 0;
 		if ($hadLiveGames) {
 			screen = Screen.LiveGames;
 		} else if (hasOpenOtp && currentRequest) {
@@ -120,7 +146,12 @@
 		onOtpSubmit={handleOtpSubmit}
 	/>
 {:else if screen === Screen.Loader}
-	<LoaderPage />
+	<LoaderPage
+		tone={loaderTone}
+		errorMessage={errorMessage || null}
+		successDataTick={liveGamesSuccessTick}
+		onReady={handleLoaderReady}
+	/>
 {:else if screen === Screen.LiveGames}
 	{#if $topNavTab === TopNavTab.Dashboard}
 		<div
@@ -151,5 +182,28 @@
 		</div>
 	{/if}
 {:else if screen === Screen.Error}
-	<ErrorPage message={errorMessage} onRetry={handleRetryFromError} />
+	<div class="error-screen">
+		<LoaderPage tone={loaderTone} errorMessage={errorMessage || null} />
+		<ErrorPage message={errorMessage} onRetry={handleRetryFromError} />
+	</div>
 {/if}
+
+<style>
+	.error-screen {
+		display: grid;
+		min-height: calc(100dvh - 60px);
+		padding: 24px;
+		gap: var(--space-lg);
+		place-items: center;
+	}
+
+	.error-screen :global(.loader) {
+		min-height: auto;
+		padding: 0;
+	}
+
+	.error-screen :global(.error-card) {
+		width: 100%;
+		max-width: 44rem;
+	}
+</style>
