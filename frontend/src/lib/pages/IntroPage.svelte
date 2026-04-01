@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Into from '$lib/components/Intro.svelte';
+	import Otp from '$lib/components/OTP.svelte';
 	import type { StreamRequestEvent } from '$lib/interfaces/streamTypes';
 
 	type Props = {
@@ -13,9 +13,9 @@
 
 {#if currentRequest}
 	{#key currentRequest.request_id}
-		<div class="intro-page">
+		<div class="otp-page">
 			<div class="mx-auto w-full max-w-md">
-				<Into
+				<Otp
 					requestId={currentRequest.request_id}
 					disabled={otpSubmitting}
 					onsubmit={onOtpSubmit}
@@ -26,7 +26,7 @@
 {/if}
 
 <style>
-	.intro-page {
+	.otp-page {
 		min-height: calc(100dvh - 60px);
 		display: flex;
 		align-items: center;
