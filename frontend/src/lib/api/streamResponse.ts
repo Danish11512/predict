@@ -1,12 +1,9 @@
-export type SubmitStreamResponseResult =
-	| { ok: true }
-	| { ok: false; kind: 'stale_404' }
-	| { ok: false; kind: 'error'; message: string }
+import type { SubmitStreamResponseBody, SubmitStreamResponseResult } from '$lib/interfaces/streamResponse'
 
-export async function submitStreamResponse(
+export const submitStreamResponse = async (
 	apiBase: string,
-	body: { request_id: string; value: string }
-): Promise<SubmitStreamResponseResult> {
+	body: SubmitStreamResponseBody
+): Promise<SubmitStreamResponseResult> => {
 	const url = `${apiBase.replace(/\/$/, '')}/stream/response`
 	const res = await fetch(url, {
 		method: 'POST',

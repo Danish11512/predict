@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
-	import { TopNavTab, topNavTab } from '$lib/interfaces/topNavTab'
+	import { TopNavTab } from '$lib/interfaces/topNavTab'
+	import { topNavTab } from '$lib/stores/topNavTabStore'
 
 	type Theme = 'light' | 'dark'
 	let theme = $state<Theme>('light')
 
-	function setTab(tab: TopNavTab) {
+	const setTab = (tab: TopNavTab) => {
 		topNavTab.set(tab)
 	}
 
@@ -30,18 +31,18 @@
 		}
 	] as const
 
-	function focusTab(tab: TopNavTab) {
+	const focusTab = (tab: TopNavTab) => {
 		if (tab === TopNavTab.Dashboard) dashboardButton?.focus()
 		else if (tab === TopNavTab.Analytics) analyticsButton?.focus()
 		else historyButton?.focus()
 	}
 
-	function activeTabIndex(): number {
+	const activeTabIndex = (): number => {
 		const idx = TABS.findIndex((t) => t.tab === $topNavTab)
 		return idx >= 0 ? idx : 0
 	}
 
-	function handleTabKeydown(e: KeyboardEvent) {
+	const handleTabKeydown = (e: KeyboardEvent) => {
 		const key = e.key
 		if (
 			key !== 'ArrowLeft' &&
@@ -74,7 +75,7 @@
 	let analyticsButton: HTMLButtonElement | null = $state(null)
 	let historyButton: HTMLButtonElement | null = $state(null)
 
-	function applyTheme(next: Theme) {
+	const applyTheme = (next: Theme) => {
 		theme = next
 		if (typeof document !== 'undefined') {
 			document.documentElement.dataset.theme = next
@@ -84,7 +85,7 @@
 		}
 	}
 
-	function toggleTheme() {
+	const toggleTheme = () => {
 		applyTheme(theme === 'dark' ? 'light' : 'dark')
 	}
 

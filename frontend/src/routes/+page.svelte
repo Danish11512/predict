@@ -2,7 +2,8 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { env } from '$env/dynamic/public';
 	import { hadLiveGames, liveGamesData } from '$lib/stores/liveGamesStore';
-	import { TopNavTab, topNavTab } from '$lib/interfaces/topNavTab';
+	import { TopNavTab } from '$lib/interfaces/topNavTab';
+	import { topNavTab } from '$lib/stores/topNavTabStore';
 	import AnalyticsPage from '$lib/pages/AnalyticsPage.svelte';
 	import ErrorPage from '$lib/pages/ErrorPage.svelte';
 	import HistoryPage from '$lib/pages/HistoryPage.svelte';
@@ -11,7 +12,7 @@
 	import MainPage from '$lib/pages/MainPage.svelte';
 	import { openStream } from '$lib/api/sseConnection';
 	import { submitStreamResponse } from '$lib/api/streamResponse';
-	import type { StreamRequestEvent } from '$lib/streamTypes';
+	import type { StreamRequestEvent } from '$lib/interfaces/streamTypes';
 
 	const Screen = {
 		Intro: 'intro',
@@ -30,7 +31,7 @@
 
 	type LoaderTone = (typeof LoaderTone)[keyof typeof LoaderTone]
 
-	function apiBase(): string {
+	const apiBase = (): string => {
 		const b = env.PUBLIC_API_BASE_URL;
 		return (typeof b === 'string' && b.length > 0 ? b : 'http://localhost:8000').replace(/\/$/, '');
 	}
@@ -45,7 +46,7 @@
 
 	let stopStream: (() => void) | null = null;
 
-	function connectStream() {
+	const connectStream = () => {
 		stopStream?.();
 		stopStream = null;
 		liveGamesSuccessTick = 0;
@@ -82,7 +83,7 @@
 		stopStream = close;
 	}
 
-	async function handleOtpSubmit(value: string) {
+	const handleOtpSubmit = async (value: string) => {
 		if (!currentRequest || otpSubmitting) return;
 		otpSubmitting = true;
 		const res = await submitStreamResponse(apiBase(), {
@@ -109,13 +110,13 @@
 		screen = Screen.Error;
 	}
 
-	function handleLoaderReady() {
+	const handleLoaderReady = () => {
 		if (screen !== Screen.Loader) return;
 		loaderTone = LoaderTone.Neutral;
 		screen = Screen.LiveGames;
 	}
 
-	function handleRetryFromError() {
+	const handleRetryFromError = () => {
 		errorMessage = '';
 		loaderTone = LoaderTone.Neutral;
 		liveGamesSuccessTick = 0;

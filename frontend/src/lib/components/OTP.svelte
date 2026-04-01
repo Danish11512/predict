@@ -15,27 +15,27 @@
 	let input2 = $state<HTMLInputElement | null>(null);
 	let input3 = $state<HTMLInputElement | null>(null);
 
-	function inputAt(i: number): HTMLInputElement | null {
+	const inputAt = (i: number): HTMLInputElement | null => {
 		if (i === 0) return input0;
 		if (i === 1) return input1;
 		if (i === 2) return input2;
 		return input3;
 	}
 
-	function otpValue(): string {
+	const otpValue = (): string => {
 		return digits.join('');
 	}
 
-	function digitsOnly(v: string): string {
+	const digitsOnly = (v: string): string => {
 		return v.replace(/\D/g, '').slice(0, OTP_LENGTH);
 	}
 
-	function focusIndex(i: number) {
+	const focusIndex = (i: number) => {
 		inputAt(i)?.focus();
 		inputAt(i)?.select();
 	}
 
-	function setFromString(v: string, startIndex = 0) {
+	const setFromString = (v: string, startIndex = 0) => {
 		const next = digitsOnly(v);
 		for (let j = 0; j < next.length; j += 1) {
 			const i = startIndex + j;
@@ -50,7 +50,7 @@
 		focusIndex(firstEmpty);
 	}
 
-	function handleBoxInput(e: Event, index: number) {
+	const handleBoxInput = (e: Event, index: number) => {
 		const t = e.currentTarget as HTMLInputElement;
 		const next = digitsOnly(t.value);
 		if (next.length > 1) {
@@ -65,7 +65,7 @@
 		}
 	}
 
-	function handleBoxKeydown(e: KeyboardEvent, index: number) {
+	const handleBoxKeydown = (e: KeyboardEvent, index: number) => {
 		if (disabled) return;
 		const key = e.key;
 		if (key === 'Backspace') {
@@ -91,7 +91,7 @@
 		}
 	}
 
-	function handlePaste(e: ClipboardEvent, index: number) {
+	const handlePaste = (e: ClipboardEvent, index: number) => {
 		if (disabled) return;
 		const text = e.clipboardData?.getData('text') ?? '';
 		const next = digitsOnly(text);

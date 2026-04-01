@@ -1,19 +1,12 @@
+import type { StreamHandlers } from '$lib/interfaces/sseConnection'
 import type {
 	LiveGamesPayload,
 	StreamErrorEvent,
 	StreamProgressEvent,
 	StreamRequestEvent
-} from '$lib/streamTypes'
+} from '$lib/interfaces/streamTypes'
 
-export type StreamHandlers = {
-	onRequest?: (ev: StreamRequestEvent) => void
-	onProgress?: (ev: StreamProgressEvent) => void
-	onData?: (payload: LiveGamesPayload) => void
-	onError?: (ev: StreamErrorEvent) => void
-	onOpen?: () => void
-}
-
-function parseJson<T>(raw: string, label: string): T | null {
+const parseJson = <T>(raw: string, label: string): T | null => {
 	void label
 	try {
 		return JSON.parse(raw) as T
@@ -25,7 +18,10 @@ function parseJson<T>(raw: string, label: string): T | null {
 /**
  * Single SSE subscription using EventSource. Call close() before opening another connection.
  */
-export function openStream(apiBase: string, handlers: StreamHandlers): { close: () => void } {
+export const openStream = (
+	apiBase: string,
+	handlers: StreamHandlers
+): { close: () => void } => {
 	const base = apiBase.replace(/\/$/, '')
 	const url = `${base}/stream`
 	const es = new EventSource(url)

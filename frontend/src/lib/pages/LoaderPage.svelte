@@ -23,7 +23,7 @@
 	const ROTATE_INTERVAL_MS = 100
 	const LIVE_GAMES_DELAY_MS = 300
 
-	function randomGlyph(): string {
+	const randomGlyph = (): string => {
 		const set = GLYPH_SETS[Math.floor(Math.random() * GLYPH_SETS.length)] ?? LATIN_GLYPHS
 		return set[Math.floor(Math.random() * set.length)] ?? '•'
 	}
@@ -34,14 +34,14 @@
 	let lastHandledTick = $state<number>(0)
 	let successDelayActive = $derived(tone === LoaderTone.Success && !!readyTimeoutId)
 
-	function stopRotation() {
+	const stopRotation = () => {
 		if (intervalId) {
 			clearInterval(intervalId)
 			intervalId = null
 		}
 	}
 
-	function clearReadyTimeout() {
+	const clearReadyTimeout = () => {
 		if (readyTimeoutId) {
 			clearTimeout(readyTimeoutId)
 			readyTimeoutId = null

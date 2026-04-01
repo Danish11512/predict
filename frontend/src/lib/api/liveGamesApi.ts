@@ -1,6 +1,6 @@
 import type { LiveGamesPayload } from '$lib/interfaces/streamTypes'
 
-export async function fetchLiveGamesSnapshot(apiBase: string): Promise<LiveGamesPayload> {
+export const fetchLiveGamesSnapshot = async (apiBase: string): Promise<LiveGamesPayload> => {
 	const url = `${apiBase.replace(/\/$/, '')}/live-games`
 	const res = await fetch(url)
 	if (!res.ok) {
