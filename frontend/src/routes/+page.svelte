@@ -146,3 +146,12 @@
 		<ErrorPage message={errorMessage} onRetry={handleRetryFromError} />
 	{/if}
 </main>
+
+<style>
+	.app-main {
+		width: 100%;
+		min-height: 100dvh;
+		padding-inline: 50px;
+		box-sizing: border-box;
+	}
+</style>
