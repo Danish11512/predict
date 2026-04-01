@@ -1,36 +1,106 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount } from 'svelte'
+	import { TopNavTab, topNavTab } from '$lib/topNavTab'
 
-	type Theme = 'light' | 'dark';
-	let theme = $state<Theme>('light');
+	type Theme = 'light' | 'dark'
+	let theme = $state<Theme>('light')
+
+	function setTab(tab: TopNavTab) {
+		topNavTab.set(tab)
+	}
+
+	const TABS = [
+		{
+			tab: TopNavTab.Dashboard,
+			tabId: 'app-header-tab-dashboard',
+			panelId: 'app-main-panel-dashboard',
+			label: 'Dashboard'
+		},
+		{
+			tab: TopNavTab.Analytics,
+			tabId: 'app-header-tab-analytics',
+			panelId: 'app-main-panel-analytics',
+			label: 'Analytics'
+		},
+		{
+			tab: TopNavTab.History,
+			tabId: 'app-header-tab-history',
+			panelId: 'app-main-panel-history',
+			label: 'History'
+		}
+	] as const
+
+	function focusTab(tab: TopNavTab) {
+		if (tab === TopNavTab.Dashboard) dashboardButton?.focus()
+		else if (tab === TopNavTab.Analytics) analyticsButton?.focus()
+		else historyButton?.focus()
+	}
+
+	function activeTabIndex(): number {
+		const idx = TABS.findIndex((t) => t.tab === $topNavTab)
+		return idx >= 0 ? idx : 0
+	}
+
+	function handleTabKeydown(e: KeyboardEvent) {
+		const key = e.key
+		if (
+			key !== 'ArrowLeft' &&
+			key !== 'ArrowRight' &&
+			key !== 'ArrowUp' &&
+			key !== 'ArrowDown' &&
+			key !== 'Home' &&
+			key !== 'End'
+		) {
+			return
+		}
+
+		e.preventDefault()
+
+		const currentIndex = activeTabIndex()
+		const lastIndex = TABS.length - 1
+
+		let nextIndex = currentIndex
+		if (key === 'Home') nextIndex = 0
+		else if (key === 'End') nextIndex = lastIndex
+		else if (key === 'ArrowLeft' || key === 'ArrowUp') nextIndex = currentIndex === 0 ? lastIndex : currentIndex - 1
+		else if (key === 'ArrowRight' || key === 'ArrowDown') nextIndex = currentIndex === lastIndex ? 0 : currentIndex + 1
+
+		const nextTab = TABS[nextIndex]?.tab ?? TABS[0].tab
+		setTab(nextTab)
+		focusTab(nextTab)
+	}
+
+	let dashboardButton: HTMLButtonElement | null = $state(null)
+	let analyticsButton: HTMLButtonElement | null = $state(null)
+	let historyButton: HTMLButtonElement | null = $state(null)
 
 	function applyTheme(next: Theme) {
-		theme = next;
+		theme = next
 		if (typeof document !== 'undefined') {
-			document.documentElement.dataset.theme = next;
+			document.documentElement.dataset.theme = next
 		}
 		if (typeof localStorage !== 'undefined') {
-			localStorage.setItem('theme', next);
+			localStorage.setItem('theme', next)
 		}
 	}
 
 	function toggleTheme() {
-		applyTheme(theme === 'dark' ? 'light' : 'dark');
+		applyTheme(theme === 'dark' ? 'light' : 'dark')
 	}
 
 	onMount(() => {
-		const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('theme') : null;
+		const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('theme') : null
 		if (stored === 'light' || stored === 'dark') {
-			applyTheme(stored);
-			return;
+			applyTheme(stored)
+			return
 		}
 
 		const prefersDark = typeof window !== 'undefined'
 			? window.matchMedia?.('(prefers-color-scheme: dark)')?.matches
-			: false;
+			: false
 
-		applyTheme(prefersDark ? 'dark' : 'light');
-	});
+		applyTheme(prefersDark ? 'dark' : 'light')
+	})
 </script>
 
 <header class="app-header">
@@ -39,6 +109,54 @@
 	<a class="app-header__title" href="/">Predict</a>
 
 	<div class="app-header__actions">
+		<div class="app-header__tabs" role="tablist" aria-label="Primary">
+			<button
+				bind:this={dashboardButton}
+				type="button"
+				role="tab"
+				id="app-header-tab-dashboard"
+				class="app-header__tab"
+				class:app-header__tab--active={$topNavTab === TopNavTab.Dashboard}
+				aria-selected={$topNavTab === TopNavTab.Dashboard}
+				aria-controls="app-main-panel-dashboard"
+				tabindex={$topNavTab === TopNavTab.Dashboard ? 0 : -1}
+				onkeydown={handleTabKeydown}
+				onclick={() => setTab(TopNavTab.Dashboard)}
+			>
+				Dashboard
+			</button>
+			<button
+				bind:this={analyticsButton}
+				type="button"
+				role="tab"
+				id="app-header-tab-analytics"
+				class="app-header__tab"
+				class:app-header__tab--active={$topNavTab === TopNavTab.Analytics}
+				aria-selected={$topNavTab === TopNavTab.Analytics}
+				aria-controls="app-main-panel-analytics"
+				tabindex={$topNavTab === TopNavTab.Analytics ? 0 : -1}
+				onkeydown={handleTabKeydown}
+				onclick={() => setTab(TopNavTab.Analytics)}
+			>
+				Analytics
+			</button>
+			<button
+				bind:this={historyButton}
+				type="button"
+				role="tab"
+				id="app-header-tab-history"
+				class="app-header__tab"
+				class:app-header__tab--active={$topNavTab === TopNavTab.History}
+				aria-selected={$topNavTab === TopNavTab.History}
+				aria-controls="app-main-panel-history"
+				tabindex={$topNavTab === TopNavTab.History ? 0 : -1}
+				onkeydown={handleTabKeydown}
+				onclick={() => setTab(TopNavTab.History)}
+			>
+				History
+			</button>
+		</div>
+
 		<button
 			type="button"
 			class="app-header__theme-toggle"
@@ -127,6 +245,32 @@
 		gap: 8px;
 	}
 
+	.app-header__tabs {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+	}
+
+	.app-header__tab {
+		appearance: none;
+		border: 0;
+		background: none;
+		color: inherit;
+		padding: 10px 6px 8px;
+		border-radius: 0;
+		cursor: pointer;
+		font-size: 16px;
+		line-height: 1;
+		vertical-align: middle;
+		white-space: nowrap;
+		text-decoration: none;
+		border-bottom: 2px solid transparent;
+	}
+
+	.app-header__tab--active {
+		border-bottom-color: currentColor;
+	}
+
 	.app-header__theme-toggle {
 		appearance: none;
 		border: 0;
@@ -162,6 +306,7 @@
 	}
 
 	.app-header__theme-toggle:focus-visible,
+	.app-header__tab:focus-visible,
 	.app-header__account:focus-visible,
 	.app-header__title:focus-visible {
 		outline: 2px solid color-mix(in srgb, currentColor 40%, transparent);

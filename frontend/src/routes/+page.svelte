@@ -1,14 +1,17 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { env } from '$env/dynamic/public';
-	import { fetchLiveGamesSnapshot } from '$lib/liveGamesApi';
+	import { hadLiveGames, liveGamesData } from '$lib/liveGamesStore';
+	import { TopNavTab, topNavTab } from '$lib/topNavTab';
+	import AnalyticsPage from '$lib/pages/AnalyticsPage.svelte';
 	import ErrorPage from '$lib/pages/ErrorPage.svelte';
+	import HistoryPage from '$lib/pages/HistoryPage.svelte';
 	import IntroPage from '$lib/pages/IntroPage.svelte';
-	import LiveGamesPage from '$lib/pages/LiveGamesPage.svelte';
 	import LoaderPage from '$lib/pages/LoaderPage.svelte';
+	import MainPage from '$lib/pages/MainPage.svelte';
 	import { openStream } from '$lib/sseConnection';
 	import { submitStreamResponse } from '$lib/streamResponse';
-	import type { LiveGamesPayload, StreamRequestEvent } from '$lib/streamTypes';
+	import type { StreamRequestEvent } from '$lib/streamTypes';
 
 	type Screen = 'intro' | 'loader' | 'liveGames' | 'error';
 
@@ -21,8 +24,6 @@
 	let currentRequest = $state<StreamRequestEvent | null>(null);
 	let hasOpenOtp = $state(false);
 	let progressPercent = $state<number | null>(null);
-	let gamesData = $state<LiveGamesPayload | null>(null);
-	let hadLiveGames = $state(false);
 	let errorMessage = $state('');
 	let otpSubmitting = $state(false);
 
@@ -33,19 +34,6 @@
 		stopStream = null;
 		const base = apiBase();
 		const { close } = openStream(base, {
-			onOpen: () => {
-				void (async () => {
-					if (!hadLiveGames) return;
-					try {
-						const snap = await fetchLiveGamesSnapshot(base);
-						if (screen === 'liveGames') {
-							gamesData = snap;
-						}
-					} catch {
-						/* recovery is best-effort */
-					}
-				})();
-			},
 			onRequest: (ev) => {
 				currentRequest = ev;
 				hasOpenOtp = true;
@@ -61,8 +49,8 @@
 				if (screen === 'intro' && hasOpenOtp) {
 					return;
 				}
-				gamesData = payload;
-				hadLiveGames = true;
+				liveGamesData.set(payload);
+				hadLiveGames.set(true);
 				if (screen === 'loader' || screen === 'liveGames' || screen === 'intro') {
 					screen = 'liveGames';
 				}
@@ -103,7 +91,7 @@
 
 	function handleRetryFromError() {
 		errorMessage = '';
-		if (hadLiveGames) {
+		if ($hadLiveGames) {
 			screen = 'liveGames';
 		} else if (hasOpenOtp && currentRequest) {
 			screen = 'intro';
@@ -111,18 +99,10 @@
 			screen = 'intro';
 		}
 		connectStream();
-		void fetchLiveGamesSnapshot(apiBase())
-			.then((snap) => {
-				if (screen === 'liveGames') {
-					gamesData = snap;
-				}
-			})
-			.catch(() => {});
 	}
 
 	onMount(() => {
 		connectStream();
-		void fetchLiveGamesSnapshot(apiBase()).catch(() => {});
 	});
 
 	onDestroy(() => {
@@ -140,7 +120,34 @@
 {:else if screen === 'loader'}
 	<LoaderPage {progressPercent} />
 {:else if screen === 'liveGames'}
-	<LiveGamesPage {gamesData} />
+	{#if $topNavTab === TopNavTab.Dashboard}
+		<div
+			role="tabpanel"
+			id="app-main-panel-dashboard"
+			aria-labelledby="app-header-tab-dashboard"
+			tabindex="0"
+		>
+			<MainPage />
+		</div>
+	{:else if $topNavTab === TopNavTab.Analytics}
+		<div
+			role="tabpanel"
+			id="app-main-panel-analytics"
+			aria-labelledby="app-header-tab-analytics"
+			tabindex="0"
+		>
+			<AnalyticsPage />
+		</div>
+	{:else}
+		<div
+			role="tabpanel"
+			id="app-main-panel-history"
+			aria-labelledby="app-header-tab-history"
+			tabindex="0"
+		>
+			<HistoryPage />
+		</div>
+	{/if}
 {:else if screen === 'error'}
 	<ErrorPage message={errorMessage} onRetry={handleRetryFromError} />
 {/if}

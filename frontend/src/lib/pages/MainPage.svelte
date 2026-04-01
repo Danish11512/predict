@@ -1,20 +1,34 @@
 <script lang="ts">
-	import type { LiveGamesPayload } from '$lib/streamTypes';
+	import { env } from '$env/dynamic/public'
+	import { onMount } from 'svelte'
+	import { fetchLiveGamesSnapshot } from '$lib/liveGamesApi'
+	import { hadLiveGames, liveGamesData } from '$lib/liveGamesStore'
 
-	type Props = {
-		gamesData: LiveGamesPayload | null;
-	};
+	function apiBase(): string {
+		const b = env.PUBLIC_API_BASE_URL
+		return (typeof b === 'string' && b.length > 0 ? b : 'http://localhost:8000').replace(/\/$/, '')
+	}
 
-	let { gamesData }: Props = $props();
+	onMount(() => {
+		if ($liveGamesData) return
+		void fetchLiveGamesSnapshot(apiBase())
+			.then((snap) => {
+				if (!$liveGamesData) {
+					liveGamesData.set(snap)
+					hadLiveGames.set(true)
+				}
+			})
+			.catch(() => {})
+	})
 </script>
 
 <h1 class="screen-title">Live games</h1>
-{#if gamesData}
+{#if $liveGamesData}
 	<p class="games-meta">
-		Updated: {gamesData.updated_utc ?? '—'} · {gamesData.games.length} game(s)
+		Updated: {$liveGamesData.updated_utc ?? '—'} · {$liveGamesData.games.length} game(s)
 	</p>
 	<ul class="games-list">
-		{#each gamesData.games as g, i (g.market_href ?? g.title ?? i)}
+		{#each $liveGamesData.games as g, i (g.market_href ?? g.title ?? i)}
 			<li class="game-card">
 				<h2 class="game-title">{g.title ?? 'Market'}</h2>
 				<p class="game-sub">
@@ -75,3 +89,4 @@
 		margin: 0;
 	}
 </style>
+
