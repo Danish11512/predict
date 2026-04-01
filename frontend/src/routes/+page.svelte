@@ -1,29 +1,36 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { env } from '$env/dynamic/public';
-	import { hadLiveGames, liveGamesData } from '$lib/liveGamesStore';
-	import { TopNavTab, topNavTab } from '$lib/topNavTab';
+	import { hadLiveGames, liveGamesData } from '$lib/stores/liveGamesStore';
+	import { TopNavTab, topNavTab } from '$lib/interfaces/topNavTab';
 	import AnalyticsPage from '$lib/pages/AnalyticsPage.svelte';
 	import ErrorPage from '$lib/pages/ErrorPage.svelte';
 	import HistoryPage from '$lib/pages/HistoryPage.svelte';
 	import IntroPage from '$lib/pages/IntroPage.svelte';
 	import LoaderPage from '$lib/pages/LoaderPage.svelte';
 	import MainPage from '$lib/pages/MainPage.svelte';
-	import { openStream } from '$lib/sseConnection';
-	import { submitStreamResponse } from '$lib/streamResponse';
+	import { openStream } from '$lib/api/sseConnection';
+	import { submitStreamResponse } from '$lib/api/streamResponse';
 	import type { StreamRequestEvent } from '$lib/streamTypes';
 
-	type Screen = 'intro' | 'loader' | 'liveGames' | 'error';
+	const Screen = {
+		Intro: 'intro',
+		Loader: 'loader',
+		LiveGames: 'liveGames',
+		Error: 'error'
+	} as const
+
+	type Screen = (typeof Screen)[keyof typeof Screen]
 
 	function apiBase(): string {
 		const b = env.PUBLIC_API_BASE_URL;
 		return (typeof b === 'string' && b.length > 0 ? b : 'http://localhost:8000').replace(/\/$/, '');
 	}
 
-	let screen = $state<Screen>('intro');
+	// Temporary: keep on Loader to test glyph loader
+	let screen = $state<Screen>(Screen.Loader);
 	let currentRequest = $state<StreamRequestEvent | null>(null);
 	let hasOpenOtp = $state(false);
-	let progressPercent = $state<number | null>(null);
 	let errorMessage = $state('');
 	let otpSubmitting = $state(false);
 
@@ -37,27 +44,24 @@
 			onRequest: (ev) => {
 				currentRequest = ev;
 				hasOpenOtp = true;
-				screen = 'intro';
+				screen = Screen.Intro;
 			},
 			onProgress: (ev) => {
-				progressPercent = ev.percent;
-				if (screen === 'intro' && !hasOpenOtp) {
-					screen = 'loader';
-				}
+				void ev;
 			},
 			onData: (payload) => {
-				if (screen === 'intro' && hasOpenOtp) {
+				if (screen === Screen.Intro && hasOpenOtp) {
 					return;
 				}
 				liveGamesData.set(payload);
 				hadLiveGames.set(true);
-				if (screen === 'loader' || screen === 'liveGames' || screen === 'intro') {
-					screen = 'liveGames';
+				if (screen === Screen.Loader || screen === Screen.LiveGames || screen === Screen.Intro) {
+					screen = Screen.LiveGames;
 				}
 			},
 			onError: (ev) => {
 				errorMessage = ev.message || ev.code;
-				screen = 'error';
+				screen = Screen.Error;
 				stopStream?.();
 				stopStream = null;
 			}
@@ -76,8 +80,7 @@
 		if (res.ok) {
 			hasOpenOtp = false;
 			currentRequest = null;
-			progressPercent = null;
-			screen = 'loader';
+			screen = Screen.Loader;
 			return;
 		}
 		if (res.kind === 'stale_404') {
@@ -86,17 +89,17 @@
 			return;
 		}
 		errorMessage = res.message;
-		screen = 'error';
+		screen = Screen.Error;
 	}
 
 	function handleRetryFromError() {
 		errorMessage = '';
 		if ($hadLiveGames) {
-			screen = 'liveGames';
+			screen = Screen.LiveGames;
 		} else if (hasOpenOtp && currentRequest) {
-			screen = 'intro';
+			screen = Screen.Intro;
 		} else {
-			screen = 'intro';
+			screen = Screen.Intro;
 		}
 		connectStream();
 	}
@@ -111,15 +114,15 @@
 	});
 </script>
 
-{#if screen === 'intro'}
+{#if screen === Screen.Intro}
 	<IntroPage
 		{currentRequest}
 		{otpSubmitting}
 		onOtpSubmit={handleOtpSubmit}
 	/>
-{:else if screen === 'loader'}
-	<LoaderPage {progressPercent} />
-{:else if screen === 'liveGames'}
+{:else if screen === Screen.Loader}
+	<LoaderPage />
+{:else if screen === Screen.LiveGames}
 	{#if $topNavTab === TopNavTab.Dashboard}
 		<div
 			role="tabpanel"
@@ -148,6 +151,6 @@
 			<HistoryPage />
 		</div>
 	{/if}
-{:else if screen === 'error'}
+{:else if screen === Screen.Error}
 	<ErrorPage message={errorMessage} onRetry={handleRetryFromError} />
 {/if}

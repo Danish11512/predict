@@ -1,56 +1,71 @@
 <script lang="ts">
-	type Props = {
-		progressPercent: number | null;
-	};
+	import { onDestroy, onMount } from 'svelte'
+	import { hadLiveGames } from '$lib/stores/liveGamesStore'
+	import { HINDI_GLYPHS, LATIN_GLYPHS, URDU_GLYPHS } from '$lib/constants/glyphs'
 
-	let { progressPercent }: Props = $props();
+	const GLYPH_SETS = [LATIN_GLYPHS, HINDI_GLYPHS, URDU_GLYPHS] as const
+
+	function randomGlyph(): string {
+		const set = GLYPH_SETS[Math.floor(Math.random() * GLYPH_SETS.length)] ?? LATIN_GLYPHS
+		return set[Math.floor(Math.random() * set.length)] ?? '•'
+	}
+
+	let glyph = $state<string>(randomGlyph())
+	let intervalId: ReturnType<typeof setInterval> | null = null
+
+	function stopRotation() {
+		if (intervalId) {
+			clearInterval(intervalId)
+			intervalId = null
+		}
+	}
+
+	onMount(() => {
+		if ($hadLiveGames) return
+		intervalId = setInterval(() => {
+			if ($hadLiveGames) {
+				stopRotation()
+				return
+			}
+			glyph = randomGlyph()
+		}, 30_000)
+	})
+
+	onDestroy(() => {
+		stopRotation()
+	})
 </script>
 
-<div class="loader-card">
-	<h1 class="screen-title">Loading live games</h1>
-	<p class="intro-wait">This can take a moment after verification.</p>
-	{#if progressPercent !== null}
-		<div
-			class="loader-bar"
-			role="progressbar"
-			aria-valuenow={progressPercent}
-			aria-valuemin={0}
-			aria-valuemax={100}
-		>
-			<div class="loader-bar-fill" style="width: {progressPercent}%"></div>
-		</div>
-	{/if}
+<div class="loader">
+	<div class="loader__glyph" aria-hidden="true">{glyph}</div>
+	<p class="loader__sr-only">Loading live games</p>
 </div>
 
 <style>
-	.loader-card {
-		background: var(--color-surface);
-		border-radius: var(--radius);
-		padding: var(--space-lg);
+	.loader {
+		min-height: calc(100dvh - 60px);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 24px;
 	}
 
-	.screen-title {
-		font-size: 1.25rem;
-		font-weight: 600;
-		margin: 0 0 var(--space-md);
+	.loader__glyph {
+		font-size: clamp(64px, 12vw, 140px);
+		line-height: 1;
+		letter-spacing: 0.02em;
+		user-select: none;
 	}
 
-	.intro-wait {
-		color: var(--color-muted);
-		margin: 0;
-	}
-
-	.loader-bar {
-		height: 6px;
-		background: #2a3a4f;
-		border-radius: 3px;
+	.loader__sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
 		overflow: hidden;
-		margin-top: var(--space-md);
-	}
-
-	.loader-bar-fill {
-		height: 100%;
-		background: var(--color-accent);
-		transition: width 0.25s ease;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 </style>

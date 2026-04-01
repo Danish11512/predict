@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public'
 	import { onMount } from 'svelte'
-	import { fetchLiveGamesSnapshot } from '$lib/liveGamesApi'
-	import { hadLiveGames, liveGamesData } from '$lib/liveGamesStore'
+	import { fetchLiveGamesSnapshot } from '$lib/api/liveGamesApi'
+	import { hadLiveGames, liveGamesData } from '$lib/stores/liveGamesStore'
 
 	function apiBase(): string {
 		const b = env.PUBLIC_API_BASE_URL

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
-	import { TopNavTab, topNavTab } from '$lib/topNavTab'
+	import { TopNavTab, topNavTab } from '$lib/interfaces/topNavTab'
 
 	type Theme = 'light' | 'dark'
 	let theme = $state<Theme>('light')
