@@ -27,8 +27,7 @@
 		return (typeof b === 'string' && b.length > 0 ? b : 'http://localhost:8000').replace(/\/$/, '');
 	}
 
-	// Temporary: keep on Loader to test glyph loader
-	let screen = $state<Screen>(Screen.Loader);
+	let screen = $state<Screen>(Screen.Intro);
 	let currentRequest = $state<StreamRequestEvent | null>(null);
 	let hasOpenOtp = $state(false);
 	let errorMessage = $state('');

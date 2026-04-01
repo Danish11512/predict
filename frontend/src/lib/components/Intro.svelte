@@ -1,13 +1,11 @@
 <script lang="ts">
 	type Props = {
-		prompt: string;
-		field: string | null;
 		requestId: string;
 		disabled?: boolean;
 		onsubmit: (value: string) => void;
 	};
 
-	let { prompt, field, requestId, disabled = false, onsubmit }: Props = $props();
+	let { requestId, disabled = false, onsubmit }: Props = $props();
 
 	let raw = $state('');
 
@@ -26,55 +24,31 @@
 	}
 </script>
 
-<div class="intro-card">
-	<h2 class="screen-title">Verification</h2>
-	<p class="intro-prompt">{prompt}</p>
-	<div class="otp-field">
-		<label for={`otp-input-${requestId}`}>{field ?? 'Code'}</label>
-		<input
-			id={`otp-input-${requestId}`}
-			class="otp-input"
-			type="text"
-			inputmode="numeric"
-			autocomplete="one-time-code"
-			maxlength={4}
-			{disabled}
-			value={raw}
-			oninput={handleInput}
-		/>
-	</div>
-</div>
+<form
+	class="otp-form"
+	onsubmit={(e) => {
+		e.preventDefault();
+		if (!disabled && raw.length === 4) onsubmit(raw);
+	}}
+>
+	<input
+		id={`otp-input-${requestId}`}
+		class="otp-input"
+		type="text"
+		inputmode="numeric"
+		autocomplete="one-time-code"
+		maxlength={4}
+		aria-label="Verification code"
+		{disabled}
+		value={raw}
+		oninput={handleInput}
+	/>
+</form>
 
 <style>
-	.intro-card {
-		background: var(--color-surface);
-		border-radius: var(--radius);
-		padding: var(--space-lg);
-	}
-
-	.screen-title {
-		font-size: 1.25rem;
-		font-weight: 600;
-		margin: 0 0 var(--space-md);
-	}
-
-	.intro-prompt {
-		color: var(--color-muted);
-		margin: 0 0 var(--space-md);
-		font-size: 0.95rem;
-	}
-
-	.otp-field {
+	.otp-form {
 		display: flex;
-		flex-direction: column;
-		gap: var(--space-sm);
-	}
-
-	.otp-field label {
-		font-size: 0.8rem;
-		color: var(--color-muted);
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
+		justify-content: center;
 	}
 
 	.otp-input {
