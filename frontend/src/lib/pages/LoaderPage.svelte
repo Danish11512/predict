@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte'
-	import { hadLiveGames } from '$lib/stores/liveGamesStore'
 	import { HINDI_GLYPHS, LATIN_GLYPHS, URDU_GLYPHS } from '$lib/constants/glyphs'
 
 	const GLYPH_SETS = [LATIN_GLYPHS, HINDI_GLYPHS, URDU_GLYPHS] as const
+	const ROTATE_INTERVAL_MS = 100
 
 	function randomGlyph(): string {
 		const set = GLYPH_SETS[Math.floor(Math.random() * GLYPH_SETS.length)] ?? LATIN_GLYPHS
@@ -21,14 +21,9 @@
 	}
 
 	onMount(() => {
-		if ($hadLiveGames) return
 		intervalId = setInterval(() => {
-			if ($hadLiveGames) {
-				stopRotation()
-				return
-			}
 			glyph = randomGlyph()
-		}, 30_000)
+		}, ROTATE_INTERVAL_MS)
 	})
 
 	onDestroy(() => {

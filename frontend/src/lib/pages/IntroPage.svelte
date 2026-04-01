@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Into from '$lib/components/Intro.svelte';
-	import type { StreamRequestEvent } from '$lib/streamTypes';
+	import type { StreamRequestEvent } from '$lib/interfaces/streamTypes';
 
 	type Props = {
 		currentRequest: StreamRequestEvent | null;
