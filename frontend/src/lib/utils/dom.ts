@@ -1,4 +1,6 @@
-export const isEventTargetInsideElementId = (evt: Event, elementId: string): boolean => {
+import type { AppHeaderDomElementId } from '$lib/constants/appHeader'
+
+export const isEventTargetInsideElementId = (evt: Event, elementId: AppHeaderDomElementId): boolean => {
 	const target = evt.target
 	if (!(target instanceof Node)) return false
 
@@ -7,4 +9,3 @@ export const isEventTargetInsideElementId = (evt: Event, elementId: string): boo
 
 	return root.contains(target)
 }
-

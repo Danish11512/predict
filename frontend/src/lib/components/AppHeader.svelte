@@ -2,12 +2,19 @@
 	import { onMount } from 'svelte'
 	import { TopNavTab } from '$lib/interfaces/topNavTab'
 	import { topNavTab } from '$lib/stores/topNavTabStore'
+	import { APP_HEADER_DOM_ID, APP_HEADER_MEDIA_QUERY } from '$lib/constants/appHeader'
 	import { APP_HEADER_TABS } from '$lib/constants/appHeaderTabs'
 	import { isEventTargetInsideElementId } from '$lib/utils/dom'
 	import { listenMediaQuery } from '$lib/utils/mediaQuery'
-	import { applyThemeToDocument, persistTheme, resolveInitialTheme, type Theme } from '$lib/utils/theme'
+	import {
+		applyThemeToDocument,
+		isDarkTheme,
+		persistTheme,
+		resolveInitialTheme,
+		themeFromIsDark
+	} from '$lib/utils/theme'
 
-	let theme = $state<Theme>('light')
+	let isDarkMode = $state(false)
 	let isTop = $state(true)
 	let isMenuOpen = $state(false)
 
@@ -59,23 +66,24 @@
 		focusTab(nextTab)
 	}
 
-	const applyTheme = (next: Theme) => {
-		theme = next
+	const applyPersistedTheme = (nextIsDark: boolean) => {
+		isDarkMode = nextIsDark
+		const next = themeFromIsDark(nextIsDark)
 		applyThemeToDocument(next)
 		persistTheme(next)
 	}
 
 	const toggleTheme = () => {
-		applyTheme(theme === 'dark' ? 'light' : 'dark')
+		applyPersistedTheme(!isDarkMode)
 		closeMenu()
 	}
 
 	onMount(() => {
-		applyTheme(resolveInitialTheme())
+		applyPersistedTheme(isDarkTheme(resolveInitialTheme()))
 
 		const onDocPointerDown = (evt: PointerEvent) => {
 			if (!isMenuOpen) return
-			if (isEventTargetInsideElementId(evt, 'app-header-root')) return
+			if (isEventTargetInsideElementId(evt, APP_HEADER_DOM_ID.root)) return
 			closeMenu()
 		}
 
@@ -86,7 +94,7 @@
 			closeMenu()
 		}
 
-		const { unsubscribe } = listenMediaQuery('(max-width: 1024px)', (compact) => {
+		const { unsubscribe } = listenMediaQuery(APP_HEADER_MEDIA_QUERY.compactWidth, (compact) => {
 			isTop = !compact
 			if (isTop) closeMenu()
 		})
@@ -102,7 +110,7 @@
 </script>
 
 {#snippet themeToggleIcon()}
-	{#if theme === 'dark'}
+	{#if isDarkMode}
 		<svg class="app-header__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
 			<path
 				fill="currentColor"
@@ -120,7 +128,7 @@
 {/snippet}
 
 <header
-	id="app-header-root"
+	id={APP_HEADER_DOM_ID.root}
 	class="app-header"
 	class:app-header--bottom={!isTop}
 >
@@ -156,7 +164,7 @@
 			<button
 				type="button"
 				class="app-header__theme-toggle"
-				aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+				aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
 				onclick={toggleTheme}
 			>
 				{@render themeToggleIcon()}
@@ -172,14 +180,14 @@
 					class="app-header__menu-button"
 					aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
 					aria-expanded={isMenuOpen}
-					aria-controls="app-header-dropup"
+					aria-controls={APP_HEADER_DOM_ID.dropup}
 					onclick={() => (isMenuOpen = !isMenuOpen)}
 				>
-					<img class="app-header__menu-icon" src={theme === 'dark' ? '/icons/menu-dark.png' : '/icons/menu.png'} alt="" aria-hidden="true" />
+					<img class="app-header__menu-icon" src={isDarkMode ? '/icons/menu-dark.png' : '/icons/menu.png'} alt="" aria-hidden="true" />
 				</button>
 
 				{#if isMenuOpen}
-					<div id="app-header-dropup" class="app-header__dropup">
+					<div id={APP_HEADER_DOM_ID.dropup} class="app-header__dropup">
 						<div class="app-header__tabs app-header__tabs--stacked" role="tablist" aria-label="Primary">
 							{#each APP_HEADER_TABS as t (t.tab)}
 								<button
@@ -202,7 +210,7 @@
 						<button
 							type="button"
 							class="app-header__theme-toggle app-header__theme-toggle--row"
-							aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+							aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
 							onclick={toggleTheme}
 						>
 							{@render themeToggleIcon()}
