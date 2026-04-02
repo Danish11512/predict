@@ -2,43 +2,38 @@
 	import { onMount } from 'svelte'
 	import { TopNavTab } from '$lib/interfaces/topNavTab'
 	import { topNavTab } from '$lib/stores/topNavTabStore'
+	import { APP_HEADER_DOM_ID, APP_HEADER_MEDIA_QUERY } from '$lib/constants/appHeader'
+	import { APP_HEADER_TABS } from '$lib/constants/appHeaderTabs'
+	import { isEventTargetInsideElementId } from '$lib/utils/dom'
+	import { listenMediaQuery } from '$lib/utils/mediaQuery'
+	import {
+		applyThemeToDocument,
+		isDarkTheme,
+		persistTheme,
+		resolveInitialTheme,
+		themeFromIsDark
+	} from '$lib/utils/theme'
 
-	type Theme = 'light' | 'dark'
-	let theme = $state<Theme>('light')
+	let isDarkMode = $state(false)
+	let isTop = $state(true)
+	let isMenuOpen = $state(false)
+
+	const closeMenu = () => {
+		isMenuOpen = false
+	}
 
 	const setTab = (tab: TopNavTab) => {
 		topNavTab.set(tab)
+		closeMenu()
 	}
 
-	const TABS = [
-		{
-			tab: TopNavTab.Dashboard,
-			tabId: 'app-header-tab-dashboard',
-			panelId: 'app-main-panel-dashboard',
-			label: 'Dashboard'
-		},
-		{
-			tab: TopNavTab.Analytics,
-			tabId: 'app-header-tab-analytics',
-			panelId: 'app-main-panel-analytics',
-			label: 'Analytics'
-		},
-		{
-			tab: TopNavTab.History,
-			tabId: 'app-header-tab-history',
-			panelId: 'app-main-panel-history',
-			label: 'History'
-		}
-	] as const
-
 	const focusTab = (tab: TopNavTab) => {
-		if (tab === TopNavTab.Dashboard) dashboardButton?.focus()
-		else if (tab === TopNavTab.Analytics) analyticsButton?.focus()
-		else historyButton?.focus()
+		const id = APP_HEADER_TABS.find((t) => t.tab === tab)?.tabId
+		if (id) document.getElementById(id)?.focus()
 	}
 
 	const activeTabIndex = (): number => {
-		const idx = TABS.findIndex((t) => t.tab === $topNavTab)
+		const idx = APP_HEADER_TABS.findIndex((t) => t.tab === $topNavTab)
 		return idx >= 0 ? idx : 0
 	}
 
@@ -58,7 +53,7 @@
 		e.preventDefault()
 
 		const currentIndex = activeTabIndex()
-		const lastIndex = TABS.length - 1
+		const lastIndex = APP_HEADER_TABS.length - 1
 
 		let nextIndex = currentIndex
 		if (key === 'Home') nextIndex = 0
@@ -66,134 +61,168 @@
 		else if (key === 'ArrowLeft' || key === 'ArrowUp') nextIndex = currentIndex === 0 ? lastIndex : currentIndex - 1
 		else if (key === 'ArrowRight' || key === 'ArrowDown') nextIndex = currentIndex === lastIndex ? 0 : currentIndex + 1
 
-		const nextTab = TABS[nextIndex]?.tab ?? TABS[0].tab
+		const nextTab = APP_HEADER_TABS[nextIndex]?.tab ?? APP_HEADER_TABS[0].tab
 		setTab(nextTab)
 		focusTab(nextTab)
 	}
 
-	let dashboardButton: HTMLButtonElement | null = $state(null)
-	let analyticsButton: HTMLButtonElement | null = $state(null)
-	let historyButton: HTMLButtonElement | null = $state(null)
-
-	const applyTheme = (next: Theme) => {
-		theme = next
-		if (typeof document !== 'undefined') {
-			document.documentElement.dataset.theme = next
-		}
-		if (typeof localStorage !== 'undefined') {
-			localStorage.setItem('theme', next)
-		}
+	const applyPersistedTheme = (nextIsDark: boolean) => {
+		isDarkMode = nextIsDark
+		const next = themeFromIsDark(nextIsDark)
+		applyThemeToDocument(next)
+		persistTheme(next)
 	}
 
 	const toggleTheme = () => {
-		applyTheme(theme === 'dark' ? 'light' : 'dark')
+		applyPersistedTheme(!isDarkMode)
+		closeMenu()
 	}
 
 	onMount(() => {
-		const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('theme') : null
-		if (stored === 'light' || stored === 'dark') {
-			applyTheme(stored)
-			return
+		applyPersistedTheme(isDarkTheme(resolveInitialTheme()))
+
+		const onDocPointerDown = (evt: PointerEvent) => {
+			if (!isMenuOpen) return
+			if (isEventTargetInsideElementId(evt, APP_HEADER_DOM_ID.root)) return
+			closeMenu()
 		}
 
-		const prefersDark = typeof window !== 'undefined'
-			? window.matchMedia?.('(prefers-color-scheme: dark)')?.matches
-			: false
+		const onDocKeyDown = (evt: KeyboardEvent) => {
+			if (!isMenuOpen) return
+			if (evt.key !== 'Escape') return
+			evt.preventDefault()
+			closeMenu()
+		}
 
-		applyTheme(prefersDark ? 'dark' : 'light')
+		const { unsubscribe } = listenMediaQuery(APP_HEADER_MEDIA_QUERY.compactWidth, (compact) => {
+			isTop = !compact
+			if (isTop) closeMenu()
+		})
+
+		document.addEventListener('pointerdown', onDocPointerDown)
+		document.addEventListener('keydown', onDocKeyDown)
+		return () => {
+			document.removeEventListener('pointerdown', onDocPointerDown)
+			document.removeEventListener('keydown', onDocKeyDown)
+			unsubscribe()
+		}
 	})
 </script>
 
-<header class="app-header">
+{#snippet themeToggleIcon()}
+	{#if isDarkMode}
+		<svg class="app-header__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+			<path
+				fill="currentColor"
+				d="M21 13.6A8.4 8.4 0 0 1 10.4 3a.6.6 0 0 0-.8-.7A9.6 9.6 0 1 0 21.7 14.4a.6.6 0 0 0-.7-.8Z"
+			/>
+		</svg>
+	{:else}
+		<svg class="app-header__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+			<path
+				fill="currentColor"
+				d="M12 18.2a6.2 6.2 0 1 1 0-12.4a6.2 6.2 0 0 1 0 12.4ZM12 1.4a.8.8 0 0 1 .8.8v2a.8.8 0 0 1-1.6 0v-2a.8.8 0 0 1 .8-.8Zm0 18.4a.8.8 0 0 1 .8.8v2a.8.8 0 0 1-1.6 0v-2a.8.8 0 0 1 .8-.8ZM4.2 3.9a.8.8 0 0 1 1.1 0l1.4 1.4a.8.8 0 1 1-1.1 1.1L4.2 5a.8.8 0 0 1 0-1.1Zm13.2 13.2a.8.8 0 0 1 1.1 0l1.4 1.4a.8.8 0 1 1-1.1 1.1l-1.4-1.4a.8.8 0 0 1 0-1.1ZM1.4 12a.8.8 0 0 1 .8-.8h2a.8.8 0 0 1 0 1.6h-2a.8.8 0 0 1-.8-.8Zm18.4 0a.8.8 0 0 1 .8-.8h2a.8.8 0 0 1 0 1.6h-2a.8.8 0 0 1-.8-.8ZM3.9 19.8a.8.8 0 0 1 0-1.1l1.4-1.4a.8.8 0 1 1 1.1 1.1l-1.4 1.4a.8.8 0 0 1-1.1 0Zm13.2-13.2a.8.8 0 0 1 0-1.1l1.4-1.4a.8.8 0 1 1 1.1 1.1l-1.4 1.4a.8.8 0 0 1-1.1 0Z"
+			/>
+		</svg>
+	{/if}
+{/snippet}
+
+<header
+	id={APP_HEADER_DOM_ID.root}
+	class="app-header"
+	class:app-header--bottom={!isTop}
+>
 	<div class="app-header__left" aria-hidden="true"></div>
+
+	{#if !isTop}
+		<div class="app-header__balance" aria-hidden="true"></div>
+	{/if}
 
 	<a class="app-header__title" href="/">Predict</a>
 
 	<div class="app-header__actions">
-		<div class="app-header__tabs" role="tablist" aria-label="Primary">
-			<button
-				bind:this={dashboardButton}
-				type="button"
-				role="tab"
-				id="app-header-tab-dashboard"
-				class="app-header__tab"
-				class:app-header__tab--active={$topNavTab === TopNavTab.Dashboard}
-				aria-selected={$topNavTab === TopNavTab.Dashboard}
-				aria-controls="app-main-panel-dashboard"
-				tabindex={$topNavTab === TopNavTab.Dashboard ? 0 : -1}
-				onkeydown={handleTabKeydown}
-				onclick={() => setTab(TopNavTab.Dashboard)}
-			>
-				Dashboard
-			</button>
-			<button
-				bind:this={analyticsButton}
-				type="button"
-				role="tab"
-				id="app-header-tab-analytics"
-				class="app-header__tab"
-				class:app-header__tab--active={$topNavTab === TopNavTab.Analytics}
-				aria-selected={$topNavTab === TopNavTab.Analytics}
-				aria-controls="app-main-panel-analytics"
-				tabindex={$topNavTab === TopNavTab.Analytics ? 0 : -1}
-				onkeydown={handleTabKeydown}
-				onclick={() => setTab(TopNavTab.Analytics)}
-			>
-				Analytics
-			</button>
-			<button
-				bind:this={historyButton}
-				type="button"
-				role="tab"
-				id="app-header-tab-history"
-				class="app-header__tab"
-				class:app-header__tab--active={$topNavTab === TopNavTab.History}
-				aria-selected={$topNavTab === TopNavTab.History}
-				aria-controls="app-main-panel-history"
-				tabindex={$topNavTab === TopNavTab.History ? 0 : -1}
-				onkeydown={handleTabKeydown}
-				onclick={() => setTab(TopNavTab.History)}
-			>
-				History
-			</button>
-		</div>
+		{#if isTop}
+			<div class="app-header__tabs" role="tablist" aria-label="Primary">
+				{#each APP_HEADER_TABS as t (t.tab)}
+					<button
+						type="button"
+						role="tab"
+						id={t.tabId}
+						class="app-header__tab"
+						class:app-header__tab--active={$topNavTab === t.tab}
+						aria-selected={$topNavTab === t.tab}
+						aria-controls={t.panelId}
+						tabindex={$topNavTab === t.tab ? 0 : -1}
+						onkeydown={handleTabKeydown}
+						onclick={() => setTab(t.tab)}
+					>
+						{t.label}
+					</button>
+				{/each}
+			</div>
 
-		<button
-			type="button"
-			class="app-header__theme-toggle"
-			aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-			onclick={toggleTheme}
-		>
-			{#if theme === 'dark'}
-				<svg
-					class="app-header__icon"
-					viewBox="0 0 24 24"
-					aria-hidden="true"
-					focusable="false"
-				>
-					<path
-						fill="currentColor"
-						d="M21 13.6A8.4 8.4 0 0 1 10.4 3a.6.6 0 0 0-.8-.7A9.6 9.6 0 1 0 21.7 14.4a.6.6 0 0 0-.7-.8Z"
-					/>
-				</svg>
-			{:else}
-				<svg
-					class="app-header__icon"
-					viewBox="0 0 24 24"
-					aria-hidden="true"
-					focusable="false"
-				>
-					<path
-						fill="currentColor"
-						d="M12 18.2a6.2 6.2 0 1 1 0-12.4a6.2 6.2 0 0 1 0 12.4ZM12 1.4a.8.8 0 0 1 .8.8v2a.8.8 0 0 1-1.6 0v-2a.8.8 0 0 1 .8-.8Zm0 18.4a.8.8 0 0 1 .8.8v2a.8.8 0 0 1-1.6 0v-2a.8.8 0 0 1 .8-.8ZM4.2 3.9a.8.8 0 0 1 1.1 0l1.4 1.4a.8.8 0 1 1-1.1 1.1L4.2 5a.8.8 0 0 1 0-1.1Zm13.2 13.2a.8.8 0 0 1 1.1 0l1.4 1.4a.8.8 0 1 1-1.1 1.1l-1.4-1.4a.8.8 0 0 1 0-1.1ZM1.4 12a.8.8 0 0 1 .8-.8h2a.8.8 0 0 1 0 1.6h-2a.8.8 0 0 1-.8-.8Zm18.4 0a.8.8 0 0 1 .8-.8h2a.8.8 0 0 1 0 1.6h-2a.8.8 0 0 1-.8-.8ZM3.9 19.8a.8.8 0 0 1 0-1.1l1.4-1.4a.8.8 0 1 1 1.1 1.1l-1.4 1.4a.8.8 0 0 1-1.1 0Zm13.2-13.2a.8.8 0 0 1 0-1.1l1.4-1.4a.8.8 0 1 1 1.1 1.1l-1.4 1.4a.8.8 0 0 1-1.1 0Z"
-					/>
-				</svg>
-			{/if}
-		</button>
+			<button
+				type="button"
+				class="app-header__theme-toggle"
+				aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+				onclick={toggleTheme}
+			>
+				{@render themeToggleIcon()}
+			</button>
 
-		<button type="button" class="app-header__account" aria-label="Account">
-			<span class="app-header__account-dot" aria-hidden="true"></span>
-		</button>
+			<button type="button" class="app-header__account" aria-label="Account">
+				<span class="app-header__account-dot" aria-hidden="true"></span>
+			</button>
+		{:else}
+			<div class="app-header__menu">
+				<button
+					type="button"
+					class="app-header__menu-button"
+					aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+					aria-expanded={isMenuOpen}
+					aria-controls={APP_HEADER_DOM_ID.dropup}
+					onclick={() => (isMenuOpen = !isMenuOpen)}
+				>
+					<img class="app-header__menu-icon" src={isDarkMode ? '/icons/menu-dark.png' : '/icons/menu.png'} alt="" aria-hidden="true" />
+				</button>
+
+				{#if isMenuOpen}
+					<div id={APP_HEADER_DOM_ID.dropup} class="app-header__dropup">
+						<div class="app-header__tabs app-header__tabs--stacked" role="tablist" aria-label="Primary">
+							{#each APP_HEADER_TABS as t (t.tab)}
+								<button
+									type="button"
+									role="tab"
+									id={t.tabId}
+									class="app-header__tab"
+									class:app-header__tab--active={$topNavTab === t.tab}
+									aria-selected={$topNavTab === t.tab}
+									aria-controls={t.panelId}
+									tabindex={$topNavTab === t.tab ? 0 : -1}
+									onkeydown={handleTabKeydown}
+									onclick={() => setTab(t.tab)}
+								>
+									{t.label}
+								</button>
+							{/each}
+						</div>
+
+						<button
+							type="button"
+							class="app-header__theme-toggle app-header__theme-toggle--row"
+							aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+							onclick={toggleTheme}
+						>
+							{@render themeToggleIcon()}
+						</button>
+
+						<button type="button" class="app-header__account app-header__account--row" aria-label="Account" onclick={closeMenu}>
+							<span class="app-header__account-dot" aria-hidden="true"></span>
+						</button>
+					</div>
+				{/if}
+			</div>
+		{/if}
 	</div>
 </header>
 
@@ -201,6 +230,7 @@
 	header.app-header {
 		position: sticky;
 		top: 0;
+		bottom: auto;
 		z-index: 1000;
 		width: 100%;
 		max-height: 60px;
@@ -211,6 +241,66 @@
 		align-items: center;
 		background: var(--app-header-bg);
 		color: var(--app-header-fg);
+	}
+
+	@media (min-width: 1025px) {
+		header.app-header {
+			display: grid;
+			grid-template-columns: 1fr 2fr 1fr;
+			column-gap: 0;
+		}
+
+		.app-header__left {
+			max-width: none;
+		}
+
+		.app-header__title {
+			flex: initial;
+			max-width: none;
+			width: auto;
+			justify-self: center;
+			text-align: center;
+		}
+
+		.app-header__actions {
+			flex: initial;
+			max-width: none;
+			justify-self: end;
+		}
+	}
+
+	header.app-header.app-header--bottom {
+		position: fixed;
+		left: 0;
+		right: 0;
+		top: auto;
+		bottom: 0;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+		column-gap: 0;
+		align-items: center;
+	}
+
+	header.app-header.app-header--bottom .app-header__left {
+		display: none;
+	}
+
+	header.app-header.app-header--bottom .app-header__balance {
+		min-width: 0;
+	}
+
+	header.app-header.app-header--bottom .app-header__title {
+		flex: initial;
+		max-width: none;
+		width: auto;
+		justify-self: center;
+		text-align: center;
+	}
+
+	header.app-header.app-header--bottom .app-header__actions {
+		flex: initial;
+		max-width: none;
+		justify-self: end;
 	}
 
 	.app-header__title {
@@ -244,12 +334,44 @@
 		align-items: center;
 		justify-content: flex-end;
 		gap: 8px;
+		position: relative;
+	}
+
+	@media (max-width: 1024px) {
+		header.app-header {
+			padding-left: 16px;
+			padding-right: 16px;
+		}
+
+		.app-header__left {
+			flex: 0 0 0;
+			max-width: 0;
+		}
+
+		.app-header__title {
+			flex: 1 1 auto;
+			max-width: none;
+			font-size: 28px;
+			text-align: left;
+		}
+
+		.app-header__actions {
+			flex: 0 0 auto;
+			max-width: none;
+		}
 	}
 
 	.app-header__tabs {
 		display: flex;
 		align-items: center;
 		gap: 4px;
+	}
+
+	.app-header__tabs--stacked {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 2px;
+		width: 100%;
 	}
 
 	.app-header__tab {
@@ -268,8 +390,25 @@
 		border-bottom: 2px solid transparent;
 	}
 
-	.app-header__tab--active {
+	.app-header__tabs:not(.app-header__tabs--stacked) .app-header__tab--active {
 		border-bottom-color: currentColor;
+	}
+
+	.app-header__tabs--stacked .app-header__tab {
+		border-bottom: none;
+		border-radius: 10px;
+		padding: 10px 10px;
+		text-align: left;
+		white-space: normal;
+		width: 100%;
+	}
+
+	:global(html[data-theme='light']) .app-header__tabs--stacked .app-header__tab--active {
+		background: color-mix(in srgb, black 10%, transparent);
+	}
+
+	:global(html[data-theme='dark']) .app-header__tabs--stacked .app-header__tab--active {
+		background: color-mix(in srgb, white 14%, transparent);
 	}
 
 	.app-header__theme-toggle {
@@ -283,6 +422,10 @@
 		line-height: 0;
 	}
 
+	.app-header__theme-toggle--row {
+		align-self: flex-start;
+	}
+
 	.app-header__account {
 		appearance: none;
 		border: 0;
@@ -290,6 +433,10 @@
 		padding: 8px;
 		border-radius: 999px;
 		cursor: pointer;
+	}
+
+	.app-header__account--row {
+		align-self: flex-start;
 	}
 
 	.app-header__account-dot {
@@ -306,10 +453,54 @@
 		height: 28px;
 	}
 
+	.app-header__menu {
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
+
+	.app-header__menu-button {
+		appearance: none;
+		border: 0;
+		background: transparent;
+		color: inherit;
+		padding: 8px;
+		border-radius: 10px;
+		cursor: pointer;
+		line-height: 0;
+	}
+
+	.app-header__menu-icon {
+		display: block;
+		width: 28px;
+		height: 28px;
+		opacity: 0.95;
+		object-fit: contain;
+	}
+
+	.app-header__dropup {
+		position: absolute;
+		right: 0;
+		bottom: 60px;
+		min-width: 220px;
+		padding: 10px 10px 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		align-items: stretch;
+		background: var(--app-header-bg);
+		color: var(--app-header-fg);
+		-webkit-backdrop-filter: blur(12px);
+		backdrop-filter: blur(12px);
+		border: 0;
+		border-radius: 14px;
+	}
+
 	.app-header__theme-toggle:focus-visible,
 	.app-header__tab:focus-visible,
 	.app-header__account:focus-visible,
-	.app-header__title:focus-visible {
+	.app-header__title:focus-visible,
+	.app-header__menu-button:focus-visible {
 		outline: 2px solid color-mix(in srgb, currentColor 40%, transparent);
 		outline-offset: 2px;
 	}
