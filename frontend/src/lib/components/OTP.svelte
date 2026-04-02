@@ -1,15 +1,10 @@
 <script lang="ts">
-	type Props = {
-		requestId: string;
-		disabled?: boolean;
-		onsubmit: (value: string) => void;
-	};
+	import { OTP_INPUT_LENGTH } from '$lib/constants/otp'
+	import type { OtpFormProps } from '$lib/interfaces/otpForm'
 
-	let { requestId, disabled = false, onsubmit }: Props = $props();
+	let { requestId, disabled = false, onsubmit }: OtpFormProps = $props()
 
-	const OTP_LENGTH = 4;
-
-	let digits = $state<string[]>(Array.from({ length: OTP_LENGTH }, () => ''));
+	let digits = $state<string[]>(Array.from({ length: OTP_INPUT_LENGTH }, () => ''))
 	let input0 = $state<HTMLInputElement | null>(null);
 	let input1 = $state<HTMLInputElement | null>(null);
 	let input2 = $state<HTMLInputElement | null>(null);
@@ -27,7 +22,7 @@
 	}
 
 	const digitsOnly = (v: string): string => {
-		return v.replace(/\D/g, '').slice(0, OTP_LENGTH);
+		return v.replace(/\D/g, '').slice(0, OTP_INPUT_LENGTH)
 	}
 
 	const focusIndex = (i: number) => {
@@ -39,7 +34,7 @@
 		const next = digitsOnly(v);
 		for (let j = 0; j < next.length; j += 1) {
 			const i = startIndex + j;
-			if (i >= OTP_LENGTH) break;
+			if (i >= OTP_INPUT_LENGTH) break
 			digits[i] = next[j] ?? '';
 		}
 		const firstEmpty = digits.findIndex((d) => d.length === 0);
@@ -59,9 +54,9 @@
 		}
 		digits[index] = next;
 		t.value = next;
-		if (next && index < OTP_LENGTH - 1) focusIndex(index + 1);
-		if (otpValue().length === OTP_LENGTH && !digits.includes('') && !disabled) {
-			onsubmit(otpValue());
+		if (next && index < OTP_INPUT_LENGTH - 1) focusIndex(index + 1)
+		if (otpValue().length === OTP_INPUT_LENGTH && !digits.includes('') && !disabled) {
+			onsubmit(otpValue())
 		}
 	}
 
@@ -84,7 +79,7 @@
 			focusIndex(index - 1);
 			return;
 		}
-		if (key === 'ArrowRight' && index < OTP_LENGTH - 1) {
+		if (key === 'ArrowRight' && index < OTP_INPUT_LENGTH - 1) {
 			e.preventDefault();
 			focusIndex(index + 1);
 			return;
@@ -106,7 +101,7 @@
 	onsubmit={(e) => {
 		e.preventDefault();
 		const value = otpValue();
-		if (!disabled && value.length === OTP_LENGTH && !digits.includes('')) onsubmit(value);
+		if (!disabled && value.length === OTP_INPUT_LENGTH && !digits.includes('')) onsubmit(value)
 	}}
 >
 	<div class="otp-boxes" role="group" aria-label="OTP code">

@@ -1,14 +1,8 @@
 <script lang="ts">
-	import Otp from '$lib/components/OTP.svelte';
-	import type { StreamRequestEvent } from '$lib/interfaces/streamTypes';
+	import Otp from '$lib/components/OTP.svelte'
+	import type { IntroPageProps } from '$lib/interfaces/introPage'
 
-	type Props = {
-		currentRequest: StreamRequestEvent | null;
-		otpSubmitting: boolean;
-		onOtpSubmit: (value: string) => void;
-	};
-
-	let { currentRequest, otpSubmitting, onOtpSubmit }: Props = $props();
+	let { currentRequest, otpSubmitting, onOtpSubmit }: IntroPageProps = $props()
 </script>
 
 {#if currentRequest}

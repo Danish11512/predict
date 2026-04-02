@@ -1,10 +1,7 @@
 <script lang="ts">
-	type Props = {
-		message: string;
-		onRetry: () => void;
-	};
+	import type { ErrorPageProps } from '$lib/interfaces/errorPage'
 
-	let { message, onRetry }: Props = $props();
+	let { message, onRetry }: ErrorPageProps = $props()
 </script>
 
 <div class="error-card">

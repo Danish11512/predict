@@ -1,30 +1,20 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte'
-	import { HINDI_GLYPHS, LATIN_GLYPHS, URDU_GLYPHS } from '$lib/constants/glyphs'
+	import { LOADER_GLYPH_SETS, LOADER_LIVE_GAMES_SUCCESS_DELAY_MS, LOADER_ROTATE_INTERVAL_MS } from '$lib/constants/loader'
+	import { LATIN_GLYPHS } from '$lib/constants/glyphs'
+	import type { LoaderPageProps } from '$lib/interfaces/loaderPage'
+	import { LoaderTone } from '$lib/interfaces/loaderTone'
 
-	const LoaderTone = {
-		Neutral: null,
-		Error: 'error',
-		Success: 'success'
-	} as const
-
-	type LoaderTone = (typeof LoaderTone)[keyof typeof LoaderTone]
-
-	type Props = {
-		errorMessage?: string | null
-		tone?: LoaderTone
-		successDataTick?: number
-		onReady?: () => void
-	}
-
-	let { errorMessage = null, tone = LoaderTone.Neutral, successDataTick = 0, onReady }: Props = $props()
-
-	const GLYPH_SETS = [LATIN_GLYPHS, HINDI_GLYPHS, URDU_GLYPHS] as const
-	const ROTATE_INTERVAL_MS = 100
-	const LIVE_GAMES_DELAY_MS = 300
+	let {
+		errorMessage = null,
+		tone = LoaderTone.Neutral,
+		successDataTick = 0,
+		onReady
+	}: LoaderPageProps = $props()
 
 	const randomGlyph = (): string => {
-		const set = GLYPH_SETS[Math.floor(Math.random() * GLYPH_SETS.length)] ?? LATIN_GLYPHS
+		const set =
+			LOADER_GLYPH_SETS[Math.floor(Math.random() * LOADER_GLYPH_SETS.length)] ?? LATIN_GLYPHS
 		return set[Math.floor(Math.random() * set.length)] ?? '•'
 	}
 
@@ -62,13 +52,13 @@
 		readyTimeoutId = setTimeout(() => {
 			readyTimeoutId = null
 			onReady?.()
-		}, LIVE_GAMES_DELAY_MS)
+		}, LOADER_LIVE_GAMES_SUCCESS_DELAY_MS)
 	})
 
 	onMount(() => {
 		intervalId = setInterval(() => {
 			glyph = randomGlyph()
-		}, ROTATE_INTERVAL_MS)
+		}, LOADER_ROTATE_INTERVAL_MS)
 	})
 
 	onDestroy(() => {

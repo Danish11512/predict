@@ -1,17 +1,12 @@
 <script lang="ts">
-	import { env } from '$env/dynamic/public'
 	import { onMount } from 'svelte'
 	import { fetchLiveGamesSnapshot } from '$lib/api/liveGamesApi'
 	import { hadLiveGames, liveGamesData } from '$lib/stores/liveGamesStore'
-
-	const apiBase = (): string => {
-		const b = env.PUBLIC_API_BASE_URL
-		return (typeof b === 'string' && b.length > 0 ? b : 'http://localhost:8000').replace(/\/$/, '')
-	}
+	import { publicApiBaseUrl } from '$lib/utils/apiBase'
 
 	onMount(() => {
 		if ($liveGamesData) return
-		void fetchLiveGamesSnapshot(apiBase())
+		void fetchLiveGamesSnapshot(publicApiBaseUrl())
 			.then((snap) => {
 				if (!$liveGamesData) {
 					liveGamesData.set(snap)

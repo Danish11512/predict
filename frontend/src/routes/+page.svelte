@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { env } from '$env/dynamic/public';
 	import { hadLiveGames, liveGamesData } from '$lib/stores/liveGamesStore';
 	import { TopNavTab } from '$lib/interfaces/topNavTab';
 	import { topNavTab } from '$lib/stores/topNavTabStore';
@@ -13,30 +12,11 @@
 	import { openStream } from '$lib/api/sseConnection';
 	import { submitStreamResponse } from '$lib/api/streamResponse';
 	import type { StreamRequestEvent } from '$lib/interfaces/streamTypes';
+	import { AppFlowScreen } from '$lib/interfaces/appFlowScreen';
+	import { LoaderTone } from '$lib/interfaces/loaderTone';
+	import { publicApiBaseUrl } from '$lib/utils/apiBase';
 
-	const Screen = {
-		Intro: 'intro',
-		Loader: 'loader',
-		LiveGames: 'liveGames',
-		Error: 'error'
-	} as const
-
-	type Screen = (typeof Screen)[keyof typeof Screen]
-
-	const LoaderTone = {
-		Neutral: null,
-		Error: 'error',
-		Success: 'success'
-	} as const
-
-	type LoaderTone = (typeof LoaderTone)[keyof typeof LoaderTone]
-
-	const apiBase = (): string => {
-		const b = env.PUBLIC_API_BASE_URL;
-		return (typeof b === 'string' && b.length > 0 ? b : 'http://localhost:8000').replace(/\/$/, '');
-	}
-
-	let screen = $state<Screen>(Screen.Intro);
+	let screen = $state<AppFlowScreen>(AppFlowScreen.Intro);
 	let currentRequest = $state<StreamRequestEvent | null>(null);
 	let hasOpenOtp = $state(false);
 	let errorMessage = $state('');
@@ -50,32 +30,32 @@
 		stopStream?.();
 		stopStream = null;
 		liveGamesSuccessTick = 0;
-		const base = apiBase();
+		const base = publicApiBaseUrl();
 		const { close } = openStream(base, {
 			onRequest: (ev) => {
 				currentRequest = ev;
 				hasOpenOtp = true;
-				screen = Screen.Intro;
+				screen = AppFlowScreen.Intro;
 			},
 			onProgress: (ev) => {
 				void ev;
 			},
 			onData: (payload) => {
-				if (screen === Screen.Intro && hasOpenOtp) {
+				if (screen === AppFlowScreen.Intro && hasOpenOtp) {
 					return;
 				}
 				liveGamesData.set(payload);
 				hadLiveGames.set(true);
-				if (screen === Screen.Loader && loaderTone === LoaderTone.Success) {
+				if (screen === AppFlowScreen.Loader && loaderTone === LoaderTone.Success) {
 					liveGamesSuccessTick += 1;
 					return;
 				}
-				if (screen === Screen.Loader || screen === Screen.LiveGames || screen === Screen.Intro) screen = Screen.LiveGames;
+				if (screen === AppFlowScreen.Loader || screen === AppFlowScreen.LiveGames || screen === AppFlowScreen.Intro) screen = AppFlowScreen.LiveGames;
 			},
 			onError: (ev) => {
 				errorMessage = ev.message || ev.code;
 				loaderTone = LoaderTone.Error;
-				screen = Screen.Error;
+				screen = AppFlowScreen.Error;
 				stopStream?.();
 				stopStream = null;
 			}
@@ -86,7 +66,7 @@
 	const handleOtpSubmit = async (value: string) => {
 		if (!currentRequest || otpSubmitting) return;
 		otpSubmitting = true;
-		const res = await submitStreamResponse(apiBase(), {
+		const res = await submitStreamResponse(publicApiBaseUrl(), {
 			request_id: currentRequest.request_id,
 			value
 		});
@@ -97,7 +77,7 @@
 			errorMessage = '';
 			loaderTone = LoaderTone.Success;
 			liveGamesSuccessTick = 0;
-			screen = Screen.Loader;
+			screen = AppFlowScreen.Loader;
 			return;
 		}
 		if (res.kind === 'stale_404') {
@@ -107,13 +87,13 @@
 		}
 		errorMessage = res.message;
 		loaderTone = LoaderTone.Error;
-		screen = Screen.Error;
+		screen = AppFlowScreen.Error;
 	}
 
 	const handleLoaderReady = () => {
-		if (screen !== Screen.Loader) return;
+		if (screen !== AppFlowScreen.Loader) return;
 		loaderTone = LoaderTone.Neutral;
-		screen = Screen.LiveGames;
+		screen = AppFlowScreen.LiveGames;
 	}
 
 	const handleRetryFromError = () => {
@@ -121,11 +101,11 @@
 		loaderTone = LoaderTone.Neutral;
 		liveGamesSuccessTick = 0;
 		if ($hadLiveGames) {
-			screen = Screen.LiveGames;
+			screen = AppFlowScreen.LiveGames;
 		} else if (hasOpenOtp && currentRequest) {
-			screen = Screen.Intro;
+			screen = AppFlowScreen.Intro;
 		} else {
-			screen = Screen.Intro;
+			screen = AppFlowScreen.Intro;
 		}
 		connectStream();
 	}
@@ -140,20 +120,20 @@
 	});
 </script>
 
-{#if screen === Screen.Intro}
+{#if screen === AppFlowScreen.Intro}
 	<IntroPage
 		{currentRequest}
 		{otpSubmitting}
 		onOtpSubmit={handleOtpSubmit}
 	/>
-{:else if screen === Screen.Loader}
+{:else if screen === AppFlowScreen.Loader}
 	<LoaderPage
 		tone={loaderTone}
 		errorMessage={errorMessage || null}
 		successDataTick={liveGamesSuccessTick}
 		onReady={handleLoaderReady}
 	/>
-{:else if screen === Screen.LiveGames}
+{:else if screen === AppFlowScreen.LiveGames}
 	{#if $topNavTab === TopNavTab.Dashboard}
 		<div
 			role="tabpanel"
@@ -182,7 +162,7 @@
 			<HistoryPage />
 		</div>
 	{/if}
-{:else if screen === Screen.Error}
+{:else if screen === AppFlowScreen.Error}
 	<div class="error-screen">
 		<LoaderPage tone={loaderTone} errorMessage={errorMessage || null} />
 		<ErrorPage message={errorMessage} onRetry={handleRetryFromError} />
