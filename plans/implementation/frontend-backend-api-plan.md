@@ -43,6 +43,8 @@ In scope:
 - `run.sh` — canonical startup: backend first, readiness wait, frontend with `PUBLIC_API_BASE_URL`
 - `.env.example` — template for all required keys; users copy to `.env`
 
+**App shell (navigation / header):** Responsive app chrome lives in `frontend/src/lib/components/AppHeader.svelte` with helpers under `frontend/src/lib/constants/`, `interfaces/`, and `utils/` (tabs, theme, media queries). Behavior and breakpoints are summarized in **`docs/frontend-conventions.md`**; compact menu icons live in **`frontend/static/icons/`** (`menu.png`, `menu-dark.png`).
+
 Out of scope:
 
 - Adding new backend endpoints
