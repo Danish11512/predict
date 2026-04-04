@@ -14,6 +14,7 @@ Suggested usage:
 - backend architecture map: [docs/backend-overview.md](docs/backend-overview.md)
 - frontend architecture map: [docs/frontend-overview.md](docs/frontend-overview.md)
 - run script orchestration: [docs/run-sh-orchestration.md](docs/run-sh-orchestration.md)
+- Kalshi trade API (markets, candlesticks, odds from price): [docs/kalshi-trade-api-market-data.md](docs/kalshi-trade-api-market-data.md)
 
 ## Implementation
 
