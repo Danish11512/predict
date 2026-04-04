@@ -11,3 +11,4 @@
 - On Python 3.9, PEP 604 union types in annotations can crash at import unless modules use `from __future__ import annotations` (or the runtime is bumped to 3.10+).
 - Environment naming: `KALSHI_PUBLIC_URL` is the Kalshi website URL for Selenium; `PUBLIC_API_BASE_URL` is the Predict FastAPI base URL for the frontend (not Kalshi). `BASE_URL` remains a legacy alias for the Kalshi site URL when `KALSHI_PUBLIC_URL` is unset.
 - Integration behavior and steps are documented in `plans/implementation/frontend-backend-api-plan.md` (OTP intro, SSE `/stream`, `POST /stream/response`, `GET /live-games`, refresh-safe OTP, loader until SSE `data` for live games after OTP submit).
+- Frontend file-placement and extraction conventions are documented in `docs/frontend-conventions.md`; third-party assets and attribution live in `docs/third-party-assets.md`.
