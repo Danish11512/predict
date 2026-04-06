@@ -21,7 +21,8 @@ export type LiveGamesPayload = {
 	games: GameRecord[]
 }
 
-export type GameRecord = {
+/** DOM-only fields from the sports page tile (clock text, href, heuristic outcomes). */
+export type ScrapedGameTile = {
 	title?: string | null
 	market_href?: string | null
 	status?: string | null
@@ -31,6 +32,29 @@ export type GameRecord = {
 	outcomes?: TeamOutcome[]
 	volume_raw?: string | null
 	markets_count?: string | null
+}
+
+/** Whitelisted Kalshi event fields from Trade API `GET /events/{ticker}`. */
+export type TradeEventSnapshot = {
+	event_ticker?: string | null
+	series_ticker?: string | null
+	title?: string | null
+	sub_title?: string | null
+	category?: string | null
+	mutually_exclusive?: boolean | null
+	available_on_brokers?: boolean | null
+	collateral_return_type?: string | null
+	product_metadata?: Record<string, unknown> | null
+	last_updated_ts?: string | null
+}
+
+/** Whitelisted Kalshi market snapshot (nested markets on event). */
+export type TradeMarketSnapshot = Record<string, string | number | boolean | null | unknown[] | Record<string, unknown>>
+
+export type GameRecord = {
+	scraped: ScrapedGameTile
+	event: TradeEventSnapshot | null
+	markets: TradeMarketSnapshot[]
 }
 
 export type TeamOutcome = {

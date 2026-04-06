@@ -25,7 +25,7 @@
 	</p>
 	<div class="games-cards">
 		<ul class="games-list">
-			{#each $liveGamesData.games as g, i (g.market_href ?? g.title ?? i)}
+			{#each $liveGamesData.games as g, i (g.scraped.market_href ?? g.event?.event_ticker ?? g.scraped.title ?? i)}
 				<LiveGameCard game={g} />
 			{/each}
 		</ul>

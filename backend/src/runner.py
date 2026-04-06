@@ -17,6 +17,7 @@ import auth
 import sports
 import state
 import utils
+import live_games_enrich
 
 SPORTS_CATEGORY_PATH = "/category/sports/all-sports"
 SPORTS_TILE_WAIT = 20
@@ -63,6 +64,11 @@ def run(
                 elif stop_event is None:
                     time.sleep(config.live_games_poll_sec)
                 continue
+            try:
+                games = live_games_enrich.enrich_games_with_trade_api(games)
+            except Exception as e:
+                print(f"Trade API enrich error: {e}", file=sys.stderr)
+                games = live_games_enrich.games_scrape_only_shape(games)
             payload = {
                 "updated_utc": datetime.utcnow().isoformat() + "Z",
                 "games": games,

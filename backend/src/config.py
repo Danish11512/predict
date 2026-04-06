@@ -50,3 +50,26 @@ try:
     live_games_poll_sec: float = max(1.0, min(60.0, _sec))
 except (TypeError, ValueError):
     live_games_poll_sec = 5.0
+
+_trade_base = (os.environ.get("KALSHI_TRADE_API_BASE") or "").strip()
+kalshi_trade_api_base: str = (
+    _trade_base if _trade_base else "https://api.elections.kalshi.com/trade-api/v2"
+)
+
+_raw_trade_timeout = os.environ.get("KALSHI_TRADE_TIMEOUT_SEC", "15")
+try:
+    kalshi_trade_timeout_sec: float = max(3.0, min(60.0, float(_raw_trade_timeout)))
+except (TypeError, ValueError):
+    kalshi_trade_timeout_sec = 15.0
+
+_raw_trade_workers = os.environ.get("KALSHI_TRADE_MAX_CONCURRENT", "4")
+try:
+    kalshi_trade_max_concurrent: int = max(1, min(16, int(_raw_trade_workers)))
+except (TypeError, ValueError):
+    kalshi_trade_max_concurrent = 4
+
+_raw_trade_retries = os.environ.get("KALSHI_TRADE_MAX_ATTEMPTS", "4")
+try:
+    kalshi_trade_max_attempts: int = max(1, min(10, int(_raw_trade_retries)))
+except (TypeError, ValueError):
+    kalshi_trade_max_attempts = 4
