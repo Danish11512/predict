@@ -1,3 +1,11 @@
+"""Application settings loaded from the environment (see ``backend/.env.example``).
+
+``APP_ENV`` controls whether dev-only surfaces are mounted (hub at ``/``, sqladmin at
+``/crud``, ``/dev/*`` request tools). Use ``production`` for deployments; any other
+value (e.g. ``development``) enables those routes. Match ``run.sh``, which treats only
+``production`` as non-dev for port cleanup.
+"""
+
 from functools import lru_cache
 
 from pydantic import Field, field_validator
@@ -14,6 +22,7 @@ class Settings(BaseSettings):
     app_env: str = Field(
         default="development",
         validation_alias="APP_ENV",
+        description="Set to production to disable dev-only UI, OpenAPI browser UIs, and request tracing.",
     )
     backend_port: int = Field(
         default=8000,
