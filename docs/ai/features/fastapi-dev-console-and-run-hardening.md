@@ -172,10 +172,10 @@ flowchart TB
   - Action: Middleware records method, path, query, status, duration ms to buffer (max 200); skips logging `GET /dev/api/requests` to avoid poll noise. One line per request to stderr via logger `backend.http`. `GET /dev/api/requests` (JSON, newest first) and `GET /dev/requests` (HTML + safe DOM updates). Only mounted when `APP_ENV` is not `production`.
   - Test criteria: `TestClient` GET `/health` then `/dev/api/requests` shows health row; production mount skipped so `/dev/api/requests` not registered (404).
 
-- [ ] Step 5 — Production: disable OpenAPI UIs
+- [x] Step 5 — Production: disable OpenAPI UIs
   - Files: `backend/src/backend/app.py`
-  - Action: When not `dev_ui_enabled`, pass `docs_url=None`, `redoc_url=None`, `openapi_url=None` to `FastAPI()` **or** equivalent so `/docs` and `/redoc` are absent in production.
-  - Test criteria: Under production settings, `/docs` and `/openapi.json` are not served (404).
+  - Action: When `APP_ENV` lowercased is `production`, pass `docs_url=None`, `redoc_url=None`, `openapi_url=None` to `FastAPI()`.
+  - Test criteria: Production `TestClient` gets 404 for `/docs` and `/openapi.json`; non-production still serves them.
 
 - [ ] Step 6 — Documentation and run script verification
   - Files: `backend/.env.example`, `backend/README.md`, `run.sh` (if tiny comment tweaks only)

@@ -7,10 +7,14 @@ from backend.settings import Settings, get_settings
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    is_prod = settings.app_env.lower() == "production"
     app = FastAPI(
         title="Kalshi integration API",
         version="0.1.0",
         description="Backend for Kalshi REST and WebSocket integration (scaffold only).",
+        docs_url=None if is_prod else "/docs",
+        redoc_url=None if is_prod else "/redoc",
+        openapi_url=None if is_prod else "/openapi.json",
     )
 
     origins = [
