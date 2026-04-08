@@ -11,6 +11,19 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    app_env: str = Field(
+        default="development",
+        validation_alias="APP_ENV",
+    )
+    backend_port: int = Field(
+        default=8000,
+        validation_alias="BACKEND_PORT",
+    )
+    frontend_port: int = Field(
+        default=5173,
+        validation_alias="FRONTEND_PORT",
+    )
+
     kalshi_api_key_id: str = Field(
         default="",
         validation_alias="KALSHI_API_KEY_ID",
