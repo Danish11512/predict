@@ -33,3 +33,6 @@ backend/**/__pycache__/
 backend/*.pyc
 backend/live_games.json
 *.pyc
+
+# Ralph config (may contain API key)
+.cursor/ralph-config.json
