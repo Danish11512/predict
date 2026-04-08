@@ -132,3 +132,9 @@ This is how Ralph maintains continuity across iterations.
 
 ### 2026-04-08 00:03:13
 **Session 20 started** (model: gpt-5.2-high)
+
+### 2026-04-08 00:03:15
+**Session 20 ended** - Agent finished naturally (8 criteria remaining)
+
+### 2026-04-08 00:03:17
+**Loop ended** - ⚠️ Max iterations (20) reached
