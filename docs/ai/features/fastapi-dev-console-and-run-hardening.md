@@ -157,7 +157,7 @@ flowchart TB
   - Action: Document in code that dev-only features are registered when `APP_ENV` (``Settings.app_env``), lowercased, is not `production`; no separate boolean flag.
   - Test criteria: Reader sees how `APP_ENV` ties to `run.sh` and dev routes.
 
-- [ ] Step 2 — Dependencies (SQLAlchemy + sqladmin)
+- [x] Step 2 — Dependencies (SQLAlchemy + sqladmin)
   - Files: `backend/pyproject.toml`, `backend/uv.lock`
   - Action: Add `sqlalchemy` and `sqladmin` (compatible with current FastAPI). Run `uv lock` / sync so lockfile updates.
   - Test criteria: `uv run python -c "import sqlalchemy, sqladmin"` succeeds.
