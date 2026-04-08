@@ -11,6 +11,7 @@ if [[ -f "$ROOT/backend/.env" ]]; then
   set +a
 fi
 
+# Pinned ports; backend reads BACKEND_PORT via its Settings (see backend/.env.example).
 BACKEND_PORT="${BACKEND_PORT:-8000}"
 FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 APP_ENV="${APP_ENV:-development}"

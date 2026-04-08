@@ -91,7 +91,7 @@ flowchart TB
 | Piece | Responsibility |
 |--------|----------------|
 | `Settings.app_env` (`APP_ENV`) | Dev-only surfaces when lowercase value is not `production` (aligned with `run.sh`). |
-| `create_app()` | Register conditional docs URLs; mount dev routes only when `APP_ENV` is not production. |
+| `create_app()` | Register conditional docs URLs from `APP_ENV`; mount dev routes only when not `production`. |
 | Dev hub (`GET /`) | Static HTML + tabs linking to documented endpoints. |
 | sqladmin `Admin` | Mounted at `/crud`; **no** `ModelView` until models exist. |
 | Middleware | On each request: record summary to ring buffer; log structured line after response. |
@@ -177,7 +177,7 @@ flowchart TB
   - Action: When `APP_ENV` lowercased is `production`, pass `docs_url=None`, `redoc_url=None`, `openapi_url=None` to `FastAPI()`.
   - Test criteria: Production `TestClient` gets 404 for `/docs` and `/openapi.json`; non-production still serves them.
 
-- [ ] Step 6 — Documentation and run script verification
+- [x] Step 6 — Documentation and run script verification
   - Files: `backend/.env.example`, `backend/README.md`, `run.sh` (if tiny comment tweaks only)
   - Action: Document `APP_ENV`, ports, and every dev URL (`/`, `/docs`, `/redoc`, `/openapi.json`, `/crud`, `/dev/requests`, `/dev/api/requests`, `/health`). Confirm `run.sh` already frees ports on start and on exit for non-production; align wording with backend behavior.
   - Test criteria: A new reader can find all URLs from README + `.env.example` without reading source.
@@ -211,7 +211,9 @@ As listed in Task Breakdown.
 
 ## Implementation Notes
 
-_Populated during execution_
+- Gating uses `settings.app_env.lower() == "production"` everywhere; no `dev_ui_enabled` flag.
+- Dev hub uses in-page nav links to sections (anchor URLs) instead of CSS-only radio tabs.
+- Live log page updates the table with `createElement` / `textContent` (no `innerHTML`).
 
 ---
 
