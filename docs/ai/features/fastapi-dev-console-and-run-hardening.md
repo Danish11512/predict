@@ -162,10 +162,10 @@ flowchart TB
   - Action: Add `sqlalchemy` and `sqladmin` (compatible with current FastAPI). Run `uv lock` / sync so lockfile updates.
   - Test criteria: `uv run python -c "import sqlalchemy, sqladmin"` succeeds.
 
-- [ ] Step 3 — Dev console module: engine + sqladmin + hub + request buffer
+- [x] Step 3 — Dev console module: engine + sqladmin + hub
   - Files: `backend/src/backend/dev_console.py` (new), `backend/src/backend/app.py`
-  - Action: Create in-memory SQLite engine; instantiate `Admin(..., base_url="/crud")` with **no** model views; define ring buffer + thread-safe/async-safe append API; serve hub HTML at `GET /` and register sqladmin only when `dev_ui_enabled`. Mount middleware for request capture (see Step 4) in app factory order after CORS.
-  - Test criteria: Under `APP_ENV=development`, `TestClient` GET `/` returns 200 HTML; GET `/crud/` returns admin UI (200); under `APP_ENV=production`, GET `/` is not the hub (404 or default), `/crud` not found.
+  - Action: In-memory SQLite engine; `Admin(..., base_url="/crud")` with **no** model views; HTML hub at `GET /` with tab-style nav and sections; mount only when `APP_ENV` lowercased is not `production`.
+  - Test criteria: `APP_ENV=development`: `TestClient` GET `/` 200 HTML; GET `/crud/` 200. `APP_ENV=production`: GET `/` and `/crud/` 404; `/health` 200.
 
 - [ ] Step 4 — Structured logging + live JSON + HTML tail
   - Files: `backend/src/backend/dev_console.py`, `backend/src/backend/app.py`

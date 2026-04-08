@@ -1,6 +1,7 @@
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.dev_console import mount_dev_console
 from backend.settings import Settings, get_settings
 
 
@@ -37,6 +38,8 @@ def create_app() -> FastAPI:
             "status": "ok",
             "kalshi_credentials_configured": kalshi_ready,
         }
+
+    mount_dev_console(app, settings)
 
     return app
 
