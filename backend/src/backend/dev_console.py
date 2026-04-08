@@ -6,12 +6,80 @@ Mounted only when ``Settings.app_env`` lowercased is not ``production`` (see
 
 from __future__ import annotations
 
+import asyncio
+import logging
+import time
+from collections import deque
+
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import create_engine
 from sqladmin import Admin
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
 from backend.settings import Settings
+
+_BUFFER_MAX = 200
+_request_records: deque[dict[str, object]] = deque(maxlen=_BUFFER_MAX)
+_request_lock = asyncio.Lock()
+
+
+async def _push_record(record: dict[str, object]) -> None:
+    async with _request_lock:
+        _request_records.appendleft(record)
+
+
+async def _snapshot_records() -> list[dict[str, object]]:
+    async with _request_lock:
+        return list(_request_records)
+
+
+def _http_request_logger() -> logging.Logger:
+    log = logging.getLogger("backend.http")
+    if not log.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        log.addHandler(handler)
+    log.setLevel(logging.INFO)
+    log.propagate = False
+    return log
+
+
+class DevRequestLogMiddleware(BaseHTTPMiddleware):
+    """Records each request (except the poll endpoint) to memory and stderr."""
+
+    def __init__(self, app: object, logger: logging.Logger) -> None:
+        super().__init__(app)
+        self._logger = logger
+
+    async def dispatch(self, request: Request, call_next):  # type: ignore[override]
+        if request.url.path == "/dev/api/requests":
+            return await call_next(request)
+        start = time.perf_counter()
+        response = await call_next(request)
+        duration_ms = round((time.perf_counter() - start) * 1000, 2)
+        path = request.url.path
+        query = request.url.query
+        method = request.method
+        status = response.status_code
+        path_display = f"{path}?{query}" if query else path
+        record: dict[str, object] = {
+            "method": method,
+            "path": path,
+            "query": query or None,
+            "status": status,
+            "duration_ms": duration_ms,
+        }
+        await _push_record(record)
+        self._logger.info(
+            "method=%s path=%s status=%s duration_ms=%s",
+            method,
+            path_display,
+            status,
+            duration_ms,
+        )
+        return response
 
 HUB_HTML = """<!DOCTYPE html>
 <html lang="en">
@@ -130,10 +198,83 @@ HUB_HTML = """<!DOCTYPE html>
 </html>
 """
 
+REQUESTS_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Live requests</title>
+  <style>
+    :root { --bg: #0f1419; --panel: #1a2332; --text: #e7ecf3; --muted: #8b9cb3; --accent: #5b9fd4; --border: #2a3a4d; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 1rem 1.25rem; }
+    h1 { font-size: 1.1rem; margin: 0 0 0.75rem; }
+    p { color: var(--muted); font-size: 0.88rem; margin: 0 0 1rem; }
+    a { color: var(--accent); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+    tbody tr:hover { background: var(--panel); }
+    code { font-size: 0.92em; }
+  </style>
+</head>
+<body>
+  <h1>Live requests</h1>
+  <p>Polls <code>/dev/api/requests</code> every 1.5s. <a href="/">Dev hub</a></p>
+  <table>
+    <thead><tr><th>Time</th><th>Method</th><th>Path</th><th>Status</th><th>ms</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <script>
+    const tbody = document.getElementById("rows");
+    function td(text) {
+      const el = document.createElement("td");
+      el.textContent = text;
+      return el;
+    }
+    function refresh() {
+      fetch("/dev/api/requests")
+        .then((r) => r.json())
+        .then((data) => {
+          const stamp = new Date().toISOString().split("T")[1].slice(0, 8);
+          tbody.replaceChildren();
+          for (const row of data) {
+            const tr = document.createElement("tr");
+            tr.appendChild(td(stamp));
+            tr.appendChild(td(row.method));
+            const pathTd = document.createElement("td");
+            const code = document.createElement("code");
+            code.textContent = row.path + (row.query ? "?" + row.query : "");
+            pathTd.appendChild(code);
+            tr.appendChild(pathTd);
+            tr.appendChild(td(String(row.status)));
+            tr.appendChild(td(String(row.duration_ms)));
+            tbody.appendChild(tr);
+          }
+        })
+        .catch(() => {
+          tbody.replaceChildren();
+          const tr = document.createElement("tr");
+          const err = document.createElement("td");
+          err.colSpan = 5;
+          err.textContent = "Failed to load";
+          tr.appendChild(err);
+          tbody.appendChild(tr);
+        });
+    }
+    setInterval(refresh, 1500);
+    refresh();
+  </script>
+</body>
+</html>
+"""
+
 
 def mount_dev_console(app: FastAPI, settings: Settings) -> None:
     if settings.app_env.lower() == "production":
         return
+
+    http_logger = _http_request_logger()
+    app.add_middleware(DevRequestLogMiddleware, logger=http_logger)
 
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
@@ -144,3 +285,12 @@ def mount_dev_console(app: FastAPI, settings: Settings) -> None:
     @app.get("/", include_in_schema=False)
     def dev_hub() -> HTMLResponse:
         return HTMLResponse(HUB_HTML)
+
+    @app.get("/dev/api/requests", include_in_schema=False)
+    async def dev_request_log_json() -> JSONResponse:
+        rows = await _snapshot_records()
+        return JSONResponse(content=rows)
+
+    @app.get("/dev/requests", include_in_schema=False)
+    def dev_request_log_page() -> HTMLResponse:
+        return HTMLResponse(REQUESTS_HTML)

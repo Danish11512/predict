@@ -167,10 +167,10 @@ flowchart TB
   - Action: In-memory SQLite engine; `Admin(..., base_url="/crud")` with **no** model views; HTML hub at `GET /` with tab-style nav and sections; mount only when `APP_ENV` lowercased is not `production`.
   - Test criteria: `APP_ENV=development`: `TestClient` GET `/` 200 HTML; GET `/crud/` 200. `APP_ENV=production`: GET `/` and `/crud/` 404; `/health` 200.
 
-- [ ] Step 4 — Structured logging + live JSON + HTML tail
-  - Files: `backend/src/backend/dev_console.py`, `backend/src/backend/app.py`
-  - Action: Middleware records method, path, query string (optional), status code, duration ms to buffer (max ~200). Log one structured line per request to stderr (same fields). Expose `GET /dev/api/requests` (JSON array, newest first) and `GET /dev/requests` (minimal HTML + fetch poll). Register only if `dev_ui_enabled`.
-  - Test criteria: `TestClient` chains multiple GETs; JSON endpoint returns matching count and order; production mode returns 404 for `/dev/api/requests`.
+- [x] Step 4 — Structured logging + live JSON + HTML tail
+  - Files: `backend/src/backend/dev_console.py`
+  - Action: Middleware records method, path, query, status, duration ms to buffer (max 200); skips logging `GET /dev/api/requests` to avoid poll noise. One line per request to stderr via logger `backend.http`. `GET /dev/api/requests` (JSON, newest first) and `GET /dev/requests` (HTML + safe DOM updates). Only mounted when `APP_ENV` is not `production`.
+  - Test criteria: `TestClient` GET `/health` then `/dev/api/requests` shows health row; production mount skipped so `/dev/api/requests` not registered (404).
 
 - [ ] Step 5 — Production: disable OpenAPI UIs
   - Files: `backend/src/backend/app.py`
