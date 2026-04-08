@@ -1,5 +1,0 @@
-# Run from backend: python scripts/serve.py
-selenium>=4.15,<5
-python-dotenv>=1.0,<2
-fastapi>=0.115,<1
-uvicorn[standard]>=0.32,<1

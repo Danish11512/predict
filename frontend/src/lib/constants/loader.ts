@@ -1,6 +1,0 @@
-import { HINDI_GLYPHS, LATIN_GLYPHS, URDU_GLYPHS } from '$lib/constants/glyphs'
-
-export const LOADER_ROTATE_INTERVAL_MS = 100
-export const LOADER_LIVE_GAMES_SUCCESS_DELAY_MS = 300
-
-export const LOADER_GLYPH_SETS = [LATIN_GLYPHS, HINDI_GLYPHS, URDU_GLYPHS] as const
