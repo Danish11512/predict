@@ -160,6 +160,7 @@ HUB_HTML = """<!DOCTYPE html>
     <nav class="hub-tabs" aria-label="Dev hub sections">
       <a href="#hub-home">Home</a>
       <a href="#hub-api">API &amp; OpenAPI</a>
+      <a href="#hub-kalshi">Kalshi</a>
       <a href="#hub-crud">Admin (CRUD)</a>
       <a href="#hub-live">Live requests</a>
     </nav>
@@ -174,6 +175,7 @@ HUB_HTML = """<!DOCTYPE html>
         <li><a href="/crud">sqladmin</a> (<code>/crud</code>) — add SQLAlchemy models to enable tables</li>
         <li><a href="/dev/requests">Live request log</a> (<code>/dev/requests</code>)</li>
       </ul>
+      <p class="note">From the Vite app, call these via the proxy as <code>/api/kalshi/…</code> (prefix stripped server-side).</p>
     </section>
     <section class="hub-section" id="hub-api">
       <h2>API &amp; OpenAPI</h2>
@@ -183,6 +185,15 @@ HUB_HTML = """<!DOCTYPE html>
         <li><a href="/openapi.json">OpenAPI schema (JSON)</a></li>
       </ul>
       <p class="note">With <code>APP_ENV=production</code>, browser OpenAPI UIs and this hub are disabled.</p>
+    </section>
+    <section class="hub-section" id="hub-kalshi">
+      <h2>Kalshi (signed REST + WS)</h2>
+      <p>Requires <code>KALSHI_API_KEY_ID</code> and <code>KALSHI_PRIVATE_KEY_PEM</code>. See also <a href="/docs">Swagger</a> under <strong>kalshi</strong>.</p>
+      <ul class="links">
+        <li><a href="/kalshi/portfolio/balance"><code>GET /kalshi/portfolio/balance</code></a> — REST signing check</li>
+        <li><a href="/kalshi/markets"><code>GET /kalshi/markets</code></a> — markets (optional query: <code>limit</code>, <code>cursor</code>, <code>status</code>)</li>
+        <li><a href="/kalshi/ws/smoke"><code>GET /kalshi/ws/smoke</code></a> — WebSocket auth + ticker subscription (may take a few seconds)</li>
+      </ul>
     </section>
     <section class="hub-section" id="hub-crud">
       <h2>Admin (CRUD)</h2>

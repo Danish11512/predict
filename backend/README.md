@@ -21,6 +21,9 @@ Always available:
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Liveness; includes whether Kalshi credentials are configured. |
+| GET | `/kalshi/portfolio/balance` | Proxies signed GET to Kalshi portfolio balance (requires API key + PEM). |
+| GET | `/kalshi/markets` | Signed GET to Kalshi `/markets` (optional `limit`, `cursor`, `status`). |
+| GET | `/kalshi/ws/smoke` | Opens Kalshi WebSocket with signed headers, subscribes to `ticker`, returns first frame or timeout note. |
 
 When `APP_ENV` is **not** `production`:
 
