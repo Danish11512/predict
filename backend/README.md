@@ -24,6 +24,7 @@ Always available:
 | GET | `/kalshi/portfolio/balance` | Proxies signed GET to Kalshi portfolio balance (requires API key + PEM). |
 | GET | `/kalshi/markets` | Signed GET to Kalshi `/markets` (optional `limit`, `cursor`, `status`). |
 | GET | `/kalshi/ws/smoke` | Opens Kalshi WebSocket with signed headers, subscribes to `ticker`, returns first frame or timeout note. |
+| GET | `/kalshi/calendar-live` | Open + multivariate events (nested markets), max 10, calendar-style scoring. |
 
 When `APP_ENV` is **not** `production`:
 
