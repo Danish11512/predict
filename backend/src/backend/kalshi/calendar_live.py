@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, NamedTuple
@@ -10,9 +11,11 @@ from urllib.parse import quote
 
 import httpx
 
-from backend.kalshi.http_client import kalshi_get
+from backend.kalshi.http_client import kalshi_get, kalshi_v1_get
 from backend.kalshi.sports_live import event_is_sports
 from backend.settings import Settings
+
+_log = logging.getLogger(__name__)
 
 _DEFAULT_CALENDAR_LIVE_MAX_EVENTS = 10
 _EVENTS_PAGE_LIMIT = 200
@@ -533,8 +536,207 @@ async def build_calendar_live_payload(settings: Settings) -> dict[str, Any]:
     return await finalize_calendar_live_payload(settings, agg, max_events=me, sports_only=False)
 
 
+async def _fetch_card_feed_sports(max_events: int) -> tuple[list[str], list[dict[str, Any]], dict[str, Any]]:
+    """Fetch ``/v1/live_data/card_feed?category=Sports``, paginating until we have enough tickers.
+
+    Returns (ordered_tickers, sections, milestone_map).
+    """
+    tickers: list[str] = []
+    seen: set[str] = set()
+    all_sections: list[dict[str, Any]] = []
+    milestones: dict[str, Any] = {}
+    cards: dict[str, Any] = {}
+    cursor: str | None = None
+
+    for _ in range(3):
+        params: dict[str, Any] = {"category": "Sports"}
+        if cursor:
+            params["cursor"] = cursor
+        resp = await kalshi_v1_get("/live_data/card_feed", params=params)
+        resp.raise_for_status()
+        data = resp.json()
+
+        for section in data.get("sections", []):
+            all_sections.append(section)
+            for item in section.get("items", []):
+                et = item.get("event_ticker")
+                if isinstance(et, str) and et not in seen:
+                    tickers.append(et)
+                    seen.add(et)
+
+        hd = data.get("hydrated_data", {})
+        milestones.update(hd.get("milestones", {}))
+        cards.update(hd.get("cards", {}))
+
+        if len(tickers) >= max_events:
+            break
+        nc = data.get("next_cursor")
+        if not isinstance(nc, str) or not nc.strip():
+            break
+        cursor = nc
+
+    return tickers, all_sections, milestones
+
+
+async def _fetch_live_data_batch(milestone_ids: list[str]) -> dict[str, Any]:
+    """Fetch ``/v1/live_data/batch`` for a set of milestone UUIDs.
+
+    Returns a dict keyed by milestone_id with the live_data details.
+    """
+    if not milestone_ids:
+        return {}
+    ids_param = ",".join(milestone_ids)
+    resp = await kalshi_v1_get("/live_data/batch", params={"milestone_ids": ids_param})
+    resp.raise_for_status()
+    data = resp.json()
+    out: dict[str, Any] = {}
+    raw = data.get("live_datas")
+    if not isinstance(raw, list):
+        return out
+    for ld in raw:
+        if not isinstance(ld, dict):
+            continue
+        mid = ld.get("milestone_id")
+        if isinstance(mid, str):
+            out[mid] = ld
+    return out
+
+
+def _milestone_ids_for_tickers(
+    tickers: list[str],
+    milestones: dict[str, Any],
+) -> list[str]:
+    """Collect milestone IDs whose primary/related tickers overlap with ``tickers``."""
+    wanted = set(tickers)
+    ids: list[str] = []
+    for mid, m in milestones.items():
+        related = set()
+        for key in ("primary_event_tickers", "related_event_tickers"):
+            raw = m.get(key)
+            if isinstance(raw, list):
+                related.update(t for t in raw if isinstance(t, str))
+        if related & wanted:
+            ids.append(mid)
+    return ids
+
+
+async def _build_sports_from_card_feed(settings: Settings, max_events: int) -> dict[str, Any]:
+    """Build the sports calendar payload using Kalshi's card_feed API (matches kalshi.com/calendar)."""
+    tickers, sections, cf_milestones = await _fetch_card_feed_sports(max_events)
+    selected = tickers[:max_events]
+
+    if not selected:
+        raise ValueError("card_feed returned no sports tickers")
+
+    event_futs = [_fetch_single_event_with_markets(settings, t) for t in selected]
+    event_results = await asyncio.gather(*event_futs, return_exceptions=True)
+    by_ticker: dict[str, dict[str, Any]] = {}
+    for t, ev in zip(selected, event_results, strict=True):
+        if isinstance(ev, dict):
+            by_ticker[t] = ev
+
+    series_needed: set[str] = set()
+    for ev in by_ticker.values():
+        st = ev.get("series_ticker")
+        if isinstance(st, str) and st:
+            series_needed.add(st)
+    sem = asyncio.Semaphore(_SERIES_FETCH_CONCURRENCY)
+
+    async def _one_series(s: str) -> tuple[str, dict[str, Any] | None]:
+        async with sem:
+            return (s, await _fetch_series(settings, s))
+
+    series_pairs = await asyncio.gather(*[_one_series(s) for s in sorted(series_needed)])
+    series_cache: dict[str, dict[str, Any] | None] = dict(series_pairs)
+
+    milestone_ids = _milestone_ids_for_tickers(selected, cf_milestones)
+    live_data: dict[str, Any] = {}
+    if milestone_ids:
+        try:
+            live_data = await _fetch_live_data_batch(milestone_ids)
+        except Exception:
+            _log.warning("live_data/batch call failed; continuing without live status", exc_info=True)
+
+    ticker_to_milestone: dict[str, str] = {}
+    for mid, m in cf_milestones.items():
+        for key in ("primary_event_tickers", "related_event_tickers"):
+            raw = m.get(key)
+            if isinstance(raw, list):
+                for t in raw:
+                    if isinstance(t, str) and t not in ticker_to_milestone:
+                        ticker_to_milestone[t] = mid
+
+    live_section_tickers: set[str] = set()
+    for section in sections:
+        if section.get("is_live"):
+            for item in section.get("items", []):
+                et = item.get("event_ticker")
+                if isinstance(et, str):
+                    live_section_tickers.add(et)
+
+    out_events: list[dict[str, Any]] = []
+    for et in selected:
+        ev = by_ticker.get(et)
+        if not isinstance(ev, dict):
+            continue
+        st = ev.get("series_ticker")
+        series_ticker = st if isinstance(st, str) else ""
+        series_obj = series_cache.get(series_ticker) if series_ticker else None
+        spm = series_obj.get("product_metadata") if isinstance(series_obj, dict) else None
+        epm = ev.get("product_metadata")
+        url = build_kalshi_markets_url(
+            series_ticker or "unknown",
+            et,
+            event_product_metadata=epm,
+            series_product_metadata=spm if isinstance(spm, dict) else None,
+        )
+        markets = ev.get("markets") if isinstance(ev.get("markets"), list) else []
+
+        mid = ticker_to_milestone.get(et)
+        ld = live_data.get(mid) if mid else None
+        game_status = None
+        widget_status = None
+        live_title = None
+        if isinstance(ld, dict):
+            details = ld.get("details", {})
+            if isinstance(details, dict):
+                game_status = details.get("status")
+                widget_status = details.get("widget_status")
+                pd = details.get("product_details")
+                if isinstance(pd, dict):
+                    live_title = pd.get("title")
+
+        row: dict[str, Any] = {
+            "event_ticker": et,
+            "title": ev.get("title"),
+            "series_ticker": series_ticker,
+            "kalshi_url": url,
+            "source": "card_feed",
+            "is_live": et in live_section_tickers,
+            "game_status": game_status,
+            "widget_status": widget_status,
+            "live_title": live_title,
+            "event": ev,
+            "markets": [m for m in markets if isinstance(m, dict)],
+        }
+        out_events.append(row)
+
+    return {
+        "max_events": max_events,
+        "returned": len(out_events),
+        "source": "card_feed",
+        "filter": "sports",
+        "sports_live_tz": settings.kalshi_sports_live_tz,
+        "events": out_events,
+    }
+
+
 async def build_sports_calendar_live_payload(settings: Settings) -> dict[str, Any]:
-    """Same aggregation as calendar-live, but only sports-classified events (same JSON row shape)."""
+    """Sports calendar payload via card_feed (matches kalshi.com/calendar), fallback to aggregation."""
     me = _calendar_live_max_events(settings)
-    agg = await aggregate_calendar_live_candidates(settings)
-    return await finalize_calendar_live_payload(settings, agg, max_events=me, sports_only=True)
+    try:
+        return await _build_sports_from_card_feed(settings, me)
+    except Exception:
+        _log.warning("card_feed sports path failed; falling back to aggregation", exc_info=True)
+        agg = await aggregate_calendar_live_candidates(settings)
+        return await finalize_calendar_live_payload(settings, agg, max_events=me, sports_only=True)

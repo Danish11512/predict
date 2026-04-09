@@ -26,7 +26,6 @@ _DEFAULT_SPORTS_SERIES_PREFIXES: frozenset[str] = frozenset(
         "KXMLSGAME",
         "KXNCAAF",
         "KXNCAA",
-        "KXNCAAB",
         "KXNCAAM",
         "KXCFB",
         "KXCBB",
@@ -54,6 +53,27 @@ _DEFAULT_SPORTS_SERIES_PREFIXES: frozenset[str] = frozenset(
         "KXIPL",
         "KXRUGBY",
         "KXSUPERBOWL",
+        # International / regional leagues surfaced by card_feed
+        "KXCONCACAF",
+        "KXCONMEBOL",
+        "KXUECL",
+        "KXUEL",
+        "KXT20",
+        "KXPSL",
+        "KXNPB",
+        "KXKBO",
+        "KXKHL",
+        "KXSHL",
+        "KXAFL",
+        "KXCBA",
+        "KXEUROLEAGUE",
+        "KXSAUDIPL",
+        "KXEGYPL",
+        "KXSUPERLIG",
+        "KXDARTS",
+        "KXAHL",
+        "KXBALLERLEAGUE",
+        "KXUFL",
     }
 )
 
@@ -175,7 +195,9 @@ def _prefix_is_sports(series_ticker: str, prefixes: frozenset[str]) -> bool:
     if st in prefixes:
         return True
     key = series_key_from_event_ticker(st) if "-" in st else st
-    return key in prefixes
+    if key in prefixes:
+        return True
+    return any(key.startswith(p) for p in prefixes)
 
 
 def leg_event_ticker_is_sports(leg_event_ticker: str, settings: Settings) -> bool:

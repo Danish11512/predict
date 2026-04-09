@@ -10,6 +10,8 @@ import httpx
 from backend.kalshi.signing import load_private_key_from_pem, path_for_request, sign_request
 from backend.settings import Settings
 
+_V1_BASE_URL = "https://api.elections.kalshi.com/v1"
+
 
 def _auth_headers(settings: Settings, method: str, sign_path: str) -> dict[str, str]:
     ts = str(int(time.time() * 1000))
@@ -37,3 +39,17 @@ async def kalshi_get(
     headers = _auth_headers(settings, "GET", sign_path)
     async with httpx.AsyncClient(base_url=base, timeout=30.0) as client:
         return await client.get(path_only, headers=headers, params=params)
+
+
+async def kalshi_v1_get(
+    path: str,
+    *,
+    params: dict[str, Any] | None = None,
+) -> httpx.Response:
+    """Unauthenticated GET to the Kalshi v1 public API (card_feed, live_data, filters)."""
+    base = _V1_BASE_URL
+    path_only = path.split("?", 1)[0]
+    if not path_only.startswith("/"):
+        path_only = f"/{path_only}"
+    async with httpx.AsyncClient(base_url=base, timeout=30.0) as client:
+        return await client.get(path_only, params=params)

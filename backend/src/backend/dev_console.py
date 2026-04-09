@@ -419,13 +419,14 @@ SPORTS_CALENDAR_LIVE_HTML = """<!DOCTYPE html>
           const frag = document.createDocumentFragment();
           const summary = textEl("p", "");
           summary.className = "meta";
-          summary.textContent =
-            "returned=" + data.returned +
-            " · filter=" + (data.filter || "") +
-            " · require_today_et=" + String(data.sports_require_today_et) +
-            " · tz=" + (data.sports_live_tz || "") +
-            " · milestone_live_event_tickers_count=" +
-            (data.milestone_live_event_tickers_count != null ? data.milestone_live_event_tickers_count : "—");
+          const parts = [
+            "returned=" + data.returned,
+            "filter=" + (data.filter || ""),
+            "source=" + (data.source || "aggregation"),
+          ];
+          if (data.sports_live_tz) parts.push("tz=" + data.sports_live_tz);
+          if (data.milestone_live_event_tickers_count != null) parts.push("milestone_live=" + data.milestone_live_event_tickers_count);
+          summary.textContent = parts.join(" · ");
           frag.appendChild(summary);
           if (data.parity) {
             const ph = textEl("h2", "Parity vs calendar-live top N");
@@ -440,13 +441,27 @@ SPORTS_CALENDAR_LIVE_HTML = """<!DOCTYPE html>
           const events = data.events || [];
           for (const row of events) {
             const art = document.createElement("article");
-            art.appendChild(textEl("h2", row.title || row.event_ticker || ""));
+            const heading = row.title || row.event_ticker || "";
+            const badges = [];
+            if (row.is_live) badges.push("LIVE");
+            if (row.widget_status && row.widget_status !== "live") badges.push(row.widget_status);
+            if (row.game_status) badges.push(row.game_status);
+            const titleLine = badges.length ? heading + " [" + badges.join(" · ") + "]" : heading;
+            art.appendChild(textEl("h2", titleLine));
+            if (row.live_title) {
+              const ltDiv = textEl("div", row.live_title);
+              ltDiv.style.fontSize = "0.82rem";
+              ltDiv.style.fontWeight = "600";
+              ltDiv.style.color = "#5ddf7c";
+              ltDiv.style.marginBottom = "0.3rem";
+              art.appendChild(ltDiv);
+            }
             const meta = textEl("div", "");
             meta.className = "meta";
             meta.appendChild(codeText(row.event_ticker || ""));
             meta.appendChild(document.createTextNode(" · series "));
             meta.appendChild(codeText(row.series_ticker || ""));
-            meta.appendChild(document.createTextNode(" · source " + (row.source || "") + (row.in_milestone_set ? " · milestone" : "")));
+            meta.appendChild(document.createTextNode(" · source " + (row.source || "")));
             art.appendChild(meta);
             if (row.kalshi_url) {
               const a = document.createElement("a");
