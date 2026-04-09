@@ -11,15 +11,18 @@ from urllib.parse import quote
 import httpx
 
 from backend.kalshi.http_client import kalshi_get
+from backend.kalshi.sports_live import event_is_sports
 from backend.settings import Settings
 
-CALENDAR_LIVE_MAX_EVENTS = 10
+_DEFAULT_CALENDAR_LIVE_MAX_EVENTS = 10
 _EVENTS_PAGE_LIMIT = 200
 _MILESTONES_LIMIT = 500
 _EVENT_LIST_MAX_PAGES = 2
 _MILESTONE_LIST_MAX_PAGES = 2
 _PRIMARY_LIVE_HYDRATE_MAX = 40
 _MILESTONE_END_GRACE = timedelta(hours=8)
+# Sports path can touch hundreds of unique series; each kalshi_get uses its own client — cap concurrency.
+_SERIES_FETCH_CONCURRENCY = 16
 
 
 def _parse_dt_utc(val: object) -> datetime | None:
@@ -46,6 +49,16 @@ def _milestone_is_live_now(m: dict[str, Any], now: datetime) -> bool:
     if end >= now:
         return True
     return (now - end) <= _MILESTONE_END_GRACE
+
+
+class CalendarLiveAggregated(NamedTuple):
+    """Shared aggregation for calendar-live and sports-only snapshots (one Kalshi fan-out)."""
+
+    ms: MilestoneTickerIndex
+    mv_ids: set[str]
+    by_ticker: dict[str, dict[str, Any]]
+    sources: dict[str, str]
+    scored: list[tuple[float, float, str]]
 
 
 class MilestoneTickerIndex(NamedTuple):
@@ -285,7 +298,7 @@ async def _fetch_series(settings: Settings, series_ticker: str) -> dict[str, Any
     path = f"/series/{quote(series_ticker, safe='')}"
     try:
         data = await _get_json(settings, path, None)
-    except httpx.HTTPStatusError:
+    except (httpx.HTTPStatusError, httpx.RequestError):
         return None
     s = data.get("series")
     return s if isinstance(s, dict) else None
@@ -315,8 +328,8 @@ async def _fetch_single_event_with_markets(settings: Settings, event_ticker: str
     return ev_obj
 
 
-async def build_calendar_live_payload(settings: Settings) -> dict[str, Any]:
-    """Return up to ``CALENDAR_LIVE_MAX_EVENTS`` open events aligned with calendar-style LIVE heuristics."""
+async def aggregate_calendar_live_candidates(settings: Settings) -> CalendarLiveAggregated:
+    """Single Kalshi fan-out: milestones + open + multivariate, scored candidate list."""
     r_open, r_mv, r_mile = await asyncio.gather(
         _fetch_open_events(settings),
         _fetch_multivariate_events(settings),
@@ -379,26 +392,47 @@ async def build_calendar_live_payload(settings: Settings) -> dict[str, Any]:
         lu_ts = lu.timestamp() if lu else 0.0
         scored.append((sc, lu_ts, et))
     scored.sort(key=lambda x: (-x[0], -x[1], x[2]))
+    return CalendarLiveAggregated(ms=ms, mv_ids=mv_ids, by_ticker=by_ticker, sources=sources, scored=scored)
 
-    selected = [et for _, _, et in scored[:CALENDAR_LIVE_MAX_EVENTS]]
 
+def _calendar_live_max_events(settings: Settings) -> int:
+    n = settings.kalshi_calendar_live_max_events
+    return n if isinstance(n, int) and n > 0 else _DEFAULT_CALENDAR_LIVE_MAX_EVENTS
+
+
+async def _fetch_series_cache_for_tickers(
+    settings: Settings,
+    agg: CalendarLiveAggregated,
+    tickers: list[str],
+) -> dict[str, dict[str, Any] | None]:
     series_needed: set[str] = set()
-    for et in selected:
-        ev = by_ticker.get(et)
+    for et in tickers:
+        ev = agg.by_ticker.get(et)
         if isinstance(ev, dict):
             st = ev.get("series_ticker")
             if isinstance(st, str) and st:
                 series_needed.add(st)
     series_list = sorted(series_needed)
-    if series_list:
-        fetched = await asyncio.gather(*[_fetch_series(settings, s) for s in series_list])
-        series_cache = dict(zip(series_list, fetched, strict=True))
-    else:
-        series_cache = {}
-    out_events: list[dict[str, Any]] = []
+    if not series_list:
+        return {}
+    sem = asyncio.Semaphore(_SERIES_FETCH_CONCURRENCY)
 
+    async def _one(s: str) -> tuple[str, dict[str, Any] | None]:
+        async with sem:
+            return (s, await _fetch_series(settings, s))
+
+    pairs = await asyncio.gather(*[_one(s) for s in series_list])
+    return dict(pairs)
+
+
+def _shape_out_events(
+    agg: CalendarLiveAggregated,
+    selected: list[str],
+    series_cache: dict[str, dict[str, Any] | None],
+) -> list[dict[str, Any]]:
+    out_events: list[dict[str, Any]] = []
     for et in selected:
-        ev = by_ticker.get(et)
+        ev = agg.by_ticker.get(et)
         if not isinstance(ev, dict):
             continue
         st = ev.get("series_ticker")
@@ -419,17 +453,88 @@ async def build_calendar_live_payload(settings: Settings) -> dict[str, Any]:
                 "title": ev.get("title"),
                 "series_ticker": series_ticker,
                 "kalshi_url": url,
-                "source": sources.get(et, "unknown"),
-                "in_milestone_set": et in ms.all_tickers,
+                "source": agg.sources.get(et, "unknown"),
+                "in_milestone_set": et in agg.ms.all_tickers,
                 "event": ev,
                 "markets": [m for m in markets if isinstance(m, dict)],
             }
         )
+    return out_events
+
+
+async def finalize_calendar_live_payload(
+    settings: Settings,
+    agg: CalendarLiveAggregated,
+    *,
+    max_events: int,
+    sports_only: bool,
+) -> dict[str, Any]:
+    """Pick top ``max_events`` rows (optionally sports-filtered) and attach series metadata + URLs."""
+    me = max_events if max_events > 0 else _DEFAULT_CALENDAR_LIVE_MAX_EVENTS
+    if not sports_only:
+        selected = [et for _, _, et in agg.scored[:me]]
+        series_cache = await _fetch_series_cache_for_tickers(settings, agg, selected)
+        out_events = _shape_out_events(agg, selected, series_cache)
+        return {
+            "max_events": me,
+            "returned": len(out_events),
+            "milestone_event_tickers_count": len(agg.ms.all_tickers),
+            "milestone_live_event_tickers_count": len(agg.ms.live_tickers),
+            "events": out_events,
+        }
+
+    pool_limit = min(len(agg.scored), max(80, me * 40), 400)
+    pool_tickers = [et for _, _, et in agg.scored[:pool_limit]]
+    series_cache = await _fetch_series_cache_for_tickers(settings, agg, pool_tickers)
+
+    calendar_top = [et for _, _, et in agg.scored[:me]]
+    calendar_top_set = set(calendar_top)
+
+    sports_selected: list[str] = []
+    for et in pool_tickers:
+        if len(sports_selected) >= me:
+            break
+        ev = agg.by_ticker.get(et)
+        if not isinstance(ev, dict):
+            continue
+        st = ev.get("series_ticker")
+        series_ticker = st if isinstance(st, str) else ""
+        series_obj = series_cache.get(series_ticker) if series_ticker else None
+        if event_is_sports(ev, series_obj if isinstance(series_obj, dict) else None, settings):
+            sports_selected.append(et)
+
+    sports_set = set(sports_selected)
+    out_events = _shape_out_events(agg, sports_selected, series_cache)
+
+    parity = {
+        "calendar_live_top_tickers": calendar_top,
+        "sports_tickers": sports_selected,
+        "sports_in_calendar_live_top": sorted(sports_set & calendar_top_set),
+        "sports_not_in_calendar_live_top": sorted(sports_set - calendar_top_set),
+    }
 
     return {
-        "max_events": CALENDAR_LIVE_MAX_EVENTS,
+        "max_events": me,
         "returned": len(out_events),
-        "milestone_event_tickers_count": len(ms.all_tickers),
-        "milestone_live_event_tickers_count": len(ms.live_tickers),
+        "milestone_event_tickers_count": len(agg.ms.all_tickers),
+        "milestone_live_event_tickers_count": len(agg.ms.live_tickers),
+        "filter": "sports",
+        "sports_live_tz": settings.kalshi_sports_live_tz,
+        "sports_require_today_et": settings.kalshi_sports_live_require_today_et,
+        "parity": parity,
         "events": out_events,
     }
+
+
+async def build_calendar_live_payload(settings: Settings) -> dict[str, Any]:
+    """Return up to configured max open events aligned with calendar-style LIVE heuristics."""
+    me = _calendar_live_max_events(settings)
+    agg = await aggregate_calendar_live_candidates(settings)
+    return await finalize_calendar_live_payload(settings, agg, max_events=me, sports_only=False)
+
+
+async def build_sports_calendar_live_payload(settings: Settings) -> dict[str, Any]:
+    """Same aggregation as calendar-live, but only sports-classified events (same JSON row shape)."""
+    me = _calendar_live_max_events(settings)
+    agg = await aggregate_calendar_live_candidates(settings)
+    return await finalize_calendar_live_payload(settings, agg, max_events=me, sports_only=True)

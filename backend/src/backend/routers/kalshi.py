@@ -7,7 +7,7 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.kalshi.calendar_live import build_calendar_live_payload
+from backend.kalshi.calendar_live import build_calendar_live_payload, build_sports_calendar_live_payload
 from backend.kalshi.http_client import kalshi_get
 from backend.kalshi.ws import kalshi_ws_smoke_test
 from backend.settings import Settings, get_settings
@@ -74,10 +74,24 @@ async def markets(
 async def calendar_live(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    """Open + multivariate events (nested markets), scored toward calendar-style LIVE; max 10."""
+    """Open + multivariate events (nested markets), scored toward calendar-style LIVE; cap from env."""
     _require_kalshi_credentials(settings)
     try:
         return await build_calendar_live_payload(settings)
+    except httpx.HTTPStatusError as e:
+        raise _http_error(e) from e
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
+
+
+@router.get("/calendar-live-sports")
+async def calendar_live_sports(
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Same payload shape as calendar-live, filtered to sports-only rows; includes parity vs calendar-live top N."""
+    _require_kalshi_credentials(settings)
+    try:
+        return await build_sports_calendar_live_payload(settings)
     except httpx.HTTPStatusError as e:
         raise _http_error(e) from e
     except httpx.RequestError as e:
