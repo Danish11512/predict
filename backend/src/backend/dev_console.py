@@ -160,8 +160,10 @@ HUB_HTML = """<!DOCTYPE html>
     <nav class="hub-tabs" aria-label="Dev hub sections">
       <a href="#hub-home">Home</a>
       <a href="#hub-api">API &amp; OpenAPI</a>
+      <a href="#hub-kalshi">Kalshi</a>
       <a href="#hub-crud">Admin (CRUD)</a>
       <a href="#hub-live">Live requests</a>
+      <a href="#hub-calendar">Calendar LIVE</a>
     </nav>
     <section class="hub-section" id="hub-home">
       <h2>Home</h2>
@@ -174,6 +176,7 @@ HUB_HTML = """<!DOCTYPE html>
         <li><a href="/crud">sqladmin</a> (<code>/crud</code>) — add SQLAlchemy models to enable tables</li>
         <li><a href="/dev/requests">Live request log</a> (<code>/dev/requests</code>)</li>
       </ul>
+      <p class="note">From the Vite app, call these via the proxy as <code>/api/kalshi/…</code> (prefix stripped server-side).</p>
     </section>
     <section class="hub-section" id="hub-api">
       <h2>API &amp; OpenAPI</h2>
@@ -183,6 +186,24 @@ HUB_HTML = """<!DOCTYPE html>
         <li><a href="/openapi.json">OpenAPI schema (JSON)</a></li>
       </ul>
       <p class="note">With <code>APP_ENV=production</code>, browser OpenAPI UIs and this hub are disabled.</p>
+    </section>
+    <section class="hub-section" id="hub-kalshi">
+      <h2>Kalshi (signed REST + WS)</h2>
+      <p>Requires <code>KALSHI_API_KEY_ID</code> and <code>KALSHI_PRIVATE_KEY_PEM</code>. See also <a href="/docs">Swagger</a> under <strong>kalshi</strong>.</p>
+      <ul class="links">
+        <li><a href="/kalshi/portfolio/balance"><code>GET /kalshi/portfolio/balance</code></a> — REST signing check</li>
+        <li><a href="/kalshi/markets"><code>GET /kalshi/markets</code></a> — markets (optional query: <code>limit</code>, <code>cursor</code>, <code>status</code>)</li>
+        <li><a href="/kalshi/ws/smoke"><code>GET /kalshi/ws/smoke</code></a> — WebSocket auth + ticker subscription (may take a few seconds)</li>
+        <li><a href="/kalshi/calendar-live"><code>GET /kalshi/calendar-live</code></a> — open + multivariate events (nested markets), max 10, calendar-style scoring</li>
+        <li><a href="/dev/kalshi-calendar-live">Calendar LIVE table</a> — fetches <code>/kalshi/calendar-live</code> in the browser</li>
+      </ul>
+    </section>
+    <section class="hub-section" id="hub-calendar">
+      <h2>Calendar LIVE (Kalshi)</h2>
+      <p>Open markets aligned with calendar-style LIVE heuristics (milestones + open events + multivariate). Same data as <a href="/kalshi/calendar-live"><code>GET /kalshi/calendar-live</code></a>.</p>
+      <ul class="links">
+        <li><a href="/dev/kalshi-calendar-live">Calendar LIVE table</a></li>
+      </ul>
     </section>
     <section class="hub-section" id="hub-crud">
       <h2>Admin (CRUD)</h2>
@@ -194,6 +215,133 @@ HUB_HTML = """<!DOCTYPE html>
       <p class="note">JSON: <a href="/dev/api/requests"><code>GET /dev/api/requests</code></a></p>
     </section>
   </main>
+</body>
+</html>
+"""
+
+CALENDAR_LIVE_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calendar LIVE</title>
+  <style>
+    :root { --bg: #0f1419; --panel: #1a2332; --text: #e7ecf3; --muted: #8b9cb3; --accent: #5b9fd4; --border: #2a3a4d; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 1rem 1.25rem; max-width: 72rem; }
+    h1 { font-size: 1.1rem; margin: 0 0 0.75rem; }
+    p { color: var(--muted); font-size: 0.88rem; margin: 0 0 1rem; }
+    a { color: var(--accent); }
+    .err { color: #e07070; }
+    article { border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem; background: var(--panel); }
+    article h2 { font-size: 0.95rem; margin: 0 0 0.35rem; font-weight: 600; }
+    .meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.5rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.5rem; }
+    th, td { text-align: left; padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--border); vertical-align: top; word-break: break-word; }
+    th { color: var(--muted); font-weight: 600; }
+    tbody tr:hover { background: rgba(0,0,0,0.15); }
+    code { font-size: 0.88em; }
+    pre.raw { overflow: auto; max-height: 14rem; font-size: 0.72rem; background: var(--bg); padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0 0; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Calendar LIVE</h1>
+  <p>Loads <code>/kalshi/calendar-live</code> (same origin). <a href="/">Dev hub</a> · <a href="/dev/requests">Live request log</a></p>
+  <div id="root"></div>
+  <script>
+    const root = document.getElementById("root");
+    function textEl(tag, t) {
+      const n = document.createElement(tag);
+      n.textContent = t;
+      return n;
+    }
+    function codeText(t) {
+      const c = document.createElement("code");
+      c.textContent = t;
+      return c;
+    }
+    function refresh() {
+      root.replaceChildren(textEl("p", "Loading…"));
+      fetch("/kalshi/calendar-live")
+        .then((r) => {
+          if (!r.ok) throw new Error(r.status + " " + r.statusText);
+          return r.json();
+        })
+        .then((data) => {
+          const frag = document.createDocumentFragment();
+          const summary = textEl("p", "");
+          summary.className = "meta";
+          summary.textContent =
+            "returned=" + data.returned +
+            " · milestone_event_tickers_count=" + data.milestone_event_tickers_count +
+            " · milestone_live_event_tickers_count=" +
+            (data.milestone_live_event_tickers_count != null ? data.milestone_live_event_tickers_count : "—");
+          frag.appendChild(summary);
+          const events = data.events || [];
+          for (const row of events) {
+            const art = document.createElement("article");
+            art.appendChild(textEl("h2", row.title || row.event_ticker || ""));
+            const meta = textEl("div", "");
+            meta.className = "meta";
+            meta.appendChild(codeText(row.event_ticker || ""));
+            meta.appendChild(document.createTextNode(" · series "));
+            meta.appendChild(codeText(row.series_ticker || ""));
+            meta.appendChild(document.createTextNode(" · source " + (row.source || "") + (row.in_milestone_set ? " · milestone" : "")));
+            art.appendChild(meta);
+            if (row.kalshi_url) {
+              const a = document.createElement("a");
+              a.href = row.kalshi_url;
+              a.textContent = row.kalshi_url;
+              a.rel = "noopener noreferrer";
+              art.appendChild(a);
+            }
+            const mkt = row.markets || [];
+            if (mkt.length) {
+              const tbl = document.createElement("table");
+              const thead = document.createElement("thead");
+              const hr = document.createElement("tr");
+              for (const h of ["Market", "Status", "Yes bid", "Yes ask", "Last", "Vol"]) {
+                const th = document.createElement("th");
+                th.textContent = h;
+                hr.appendChild(th);
+              }
+              thead.appendChild(hr);
+              tbl.appendChild(thead);
+              const tb = document.createElement("tbody");
+              for (const m of mkt) {
+                const tr = document.createElement("tr");
+                const t1 = document.createElement("td");
+                const c = codeText(m.ticker || "");
+                t1.appendChild(c);
+                tr.appendChild(t1);
+                const st = document.createElement("td");
+                st.textContent = m.status || "";
+                tr.appendChild(st);
+                for (const k of ["yes_bid_dollars", "yes_ask_dollars", "last_price_dollars", "volume_fp"]) {
+                  const td = document.createElement("td");
+                  td.textContent = m[k] != null ? String(m[k]) : "";
+                  tr.appendChild(td);
+                }
+                tb.appendChild(tr);
+              }
+              tbl.appendChild(tb);
+              art.appendChild(tbl);
+            }
+            const pre = document.createElement("pre");
+            pre.className = "raw";
+            pre.textContent = JSON.stringify(row.event, null, 2);
+            art.appendChild(pre);
+            frag.appendChild(art);
+          }
+          root.replaceChildren(frag);
+        })
+        .catch((e) => {
+          const p = textEl("p", "Failed: " + String(e));
+          p.className = "err";
+          root.replaceChildren(p);
+        });
+    }
+    refresh();
+  </script>
 </body>
 </html>
 """
@@ -294,3 +442,7 @@ def mount_dev_console(app: FastAPI, settings: Settings) -> None:
     @app.get("/dev/requests", include_in_schema=False)
     def dev_request_log_page() -> HTMLResponse:
         return HTMLResponse(REQUESTS_HTML)
+
+    @app.get("/dev/kalshi-calendar-live", include_in_schema=False)
+    def dev_kalshi_calendar_live() -> HTMLResponse:
+        return HTMLResponse(CALENDAR_LIVE_HTML)

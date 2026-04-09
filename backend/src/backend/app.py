@@ -2,6 +2,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.dev_console import mount_dev_console
+from backend.routers import kalshi as kalshi_router
 from backend.settings import Settings, get_settings
 
 
@@ -42,6 +43,8 @@ def create_app() -> FastAPI:
             "status": "ok",
             "kalshi_credentials_configured": kalshi_ready,
         }
+
+    app.include_router(kalshi_router.router)
 
     mount_dev_console(app, settings)
 
