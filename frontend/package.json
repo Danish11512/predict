@@ -4,21 +4,30 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "react-router dev",
+    "build": "react-router build",
+    "typecheck": "react-router typegen && tsc -b",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check": "bun run typecheck && bun run lint && bun run build"
   },
   "dependencies": {
+    "@react-router/node": "7.14.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "lucide-react": "^1.8.0",
+    "radix-ui": "^1.4.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "tailwind-merge": "^3.5.0"
+    "react-router": "7.14.0",
+    "tailwind-merge": "^3.5.0",
+    "zustand": "^5.0.12",
+    "isbot": "^5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@react-router/dev": "7.14.0",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",

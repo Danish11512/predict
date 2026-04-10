@@ -1,0 +1,110 @@
+.endpoint-panel__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.endpoint-panel__heading {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.endpoint-panel__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.endpoint-panel__url-badge {
+  max-width: min(100%, 36rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+}
+
+.endpoint-panel__columns {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 900px) {
+  .endpoint-panel__columns {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.endpoint-panel__subheading {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.endpoint-panel__table-wrap {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.endpoint-panel__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.endpoint-panel__table th,
+.endpoint-panel__table td {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.endpoint-panel__table th {
+  text-align: left;
+  color: var(--muted-foreground, var(--text));
+  font-weight: 600;
+  width: 8rem;
+}
+
+.endpoint-panel__raw {
+  margin: 0;
+  padding: 0.75rem;
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  background: var(--code-bg, var(--muted));
+  border-radius: 0.5rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.endpoint-panel__raw--error {
+  color: var(--destructive, #b91c1c);
+  background: color-mix(in srgb, var(--destructive, #b91c1c) 8%, transparent);
+}
+
+.endpoint-panel__raw-scroll {
+  max-height: min(70vh, 40rem);
+  border-radius: 0.5rem;
+}
+
+.endpoint-panel__html-preview {
+  max-height: min(70vh, 40rem);
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+}
+
+.endpoint-panel__skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.endpoint-panel__muted {
+  color: var(--muted-foreground, var(--text));
+}
