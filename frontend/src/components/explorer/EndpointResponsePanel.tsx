@@ -1,11 +1,14 @@
 import { memo, useEffect, useMemo, useState } from 'react'
 
 import { Badge } from '@components/ui/badge'
+import { CalendarLiveExplorerPanel } from '@components/explorer/calendar-live/CalendarLiveExplorerPanel'
+import { SportsCalendarLiveExplorerPanel } from '@components/explorer/calendar-live/SportsCalendarLiveExplorerPanel'
 import { ScrollArea } from '@components/ui/scrollArea'
 import { Separator } from '@components/ui/separator'
 import { Skeleton } from '@components/ui/skeleton'
 import { toProxiedUrl } from '@shared/lib/apiProxy'
 import {
+  ApiExplorerEndpointId,
   ApiExplorerResponseKind,
   type EndpointFetchState,
   type EndpointResponsePanelProps,
@@ -109,7 +112,7 @@ function formatCell(value: unknown): string {
   return String(value)
 }
 
-function EndpointResponsePanelInner({ endpoint }: EndpointResponsePanelProps) {
+function GenericEndpointResponsePanel({ endpoint }: EndpointResponsePanelProps) {
   const [state, setState] = useState<EndpointFetchState>({ status: 'loading' })
 
   const url = useMemo(() => toProxiedUrl(endpoint.proxyPath), [endpoint.proxyPath])
@@ -198,4 +201,14 @@ function EndpointResponsePanelInner({ endpoint }: EndpointResponsePanelProps) {
   )
 }
 
-export const EndpointResponsePanel = memo(EndpointResponsePanelInner)
+function EndpointResponsePanelSwitch({ endpoint }: EndpointResponsePanelProps) {
+  if (endpoint.id === ApiExplorerEndpointId.KalshiCalendarLive) {
+    return <CalendarLiveExplorerPanel endpoint={endpoint} />
+  }
+  if (endpoint.id === ApiExplorerEndpointId.KalshiCalendarLiveSports) {
+    return <SportsCalendarLiveExplorerPanel endpoint={endpoint} />
+  }
+  return <GenericEndpointResponsePanel endpoint={endpoint} />
+}
+
+export const EndpointResponsePanel = memo(EndpointResponsePanelSwitch)

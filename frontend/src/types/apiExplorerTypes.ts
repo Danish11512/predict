@@ -14,11 +14,6 @@ export const ApiExplorerEndpointId = {
   KalshiCalendarLive: 'kalshi-calendar-live',
   KalshiCalendarLiveSports: 'kalshi-calendar-live-sports',
   KalshiWsSmoke: 'kalshi-ws-smoke',
-  DevApiRequests: 'dev-api-requests',
-  DevRequestsHtml: 'dev-requests-html',
-  DevKalshiCalendarLiveHtml: 'dev-kalshi-calendar-live-html',
-  DevKalshiCalendarLiveSportsHtml: 'dev-kalshi-calendar-live-sports-html',
-  DevHubHtml: 'dev-hub-html',
 } as const
 
 export type ApiExplorerEndpointId =

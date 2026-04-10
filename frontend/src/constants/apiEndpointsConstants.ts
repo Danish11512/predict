@@ -51,41 +51,6 @@ export const API_EXPLORER_ENDPOINTS: readonly ApiExplorerEndpoint[] = [
     proxyPath: '/kalshi/ws/smoke',
     responseKind: ApiExplorerResponseKind.Json,
   },
-  {
-    id: ApiExplorerEndpointId.DevApiRequests,
-    label: 'GET /dev/api/requests',
-    routerPath: 'dev/api/requests',
-    proxyPath: '/dev/api/requests',
-    responseKind: ApiExplorerResponseKind.Json,
-  },
-  {
-    id: ApiExplorerEndpointId.DevRequestsHtml,
-    label: 'GET /dev/requests (HTML)',
-    routerPath: 'dev/requests',
-    proxyPath: '/dev/requests',
-    responseKind: ApiExplorerResponseKind.Html,
-  },
-  {
-    id: ApiExplorerEndpointId.DevKalshiCalendarLiveHtml,
-    label: 'GET /dev/kalshi-calendar-live (HTML)',
-    routerPath: 'dev/kalshi-calendar-live',
-    proxyPath: '/dev/kalshi-calendar-live',
-    responseKind: ApiExplorerResponseKind.Html,
-  },
-  {
-    id: ApiExplorerEndpointId.DevKalshiCalendarLiveSportsHtml,
-    label: 'GET /dev/kalshi-calendar-live-sports (HTML)',
-    routerPath: 'dev/kalshi-calendar-live-sports',
-    proxyPath: '/dev/kalshi-calendar-live-sports',
-    responseKind: ApiExplorerResponseKind.Html,
-  },
-  {
-    id: ApiExplorerEndpointId.DevHubHtml,
-    label: 'GET / (dev hub HTML)',
-    routerPath: 'dev/hub',
-    proxyPath: '/',
-    responseKind: ApiExplorerResponseKind.Html,
-  },
 ]
 
 const byRouterPath = new Map<string, ApiExplorerEndpoint>()

@@ -43,7 +43,7 @@ function ExplorerLayoutInner() {
               <SheetTitle className="text-base">API endpoints</SheetTitle>
             </SheetHeader>
             <ScrollArea className="h-[calc(100vh-4rem)]">
-              <nav className="flex flex-col gap-0.5 p-2" aria-label="Kalshi and dev endpoints">
+              <nav className="flex flex-col gap-0.5 p-2" aria-label="API endpoints">
                 {API_EXPLORER_ENDPOINTS.map((ep) => {
                   const href = `/${ep.routerPath}`
                   const isActive = activeExplorerPath === href || activeExplorerPath === `${href}/`

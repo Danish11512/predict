@@ -19,6 +19,7 @@ export default defineConfig({
       '@assets': path.join(src, 'assets'),
       '@components': path.join(src, 'components'),
       '@constants': path.join(src, 'constants'),
+      '@hooks': path.join(src, 'hooks'),
       '@shared': path.join(src, 'shared'),
       '@stores': path.join(src, 'stores'),
       '@styles': path.join(src, 'styles'),
