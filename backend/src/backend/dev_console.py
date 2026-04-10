@@ -194,15 +194,18 @@ HUB_HTML = """<!DOCTYPE html>
         <li><a href="/kalshi/portfolio/balance"><code>GET /kalshi/portfolio/balance</code></a> — REST signing check</li>
         <li><a href="/kalshi/markets"><code>GET /kalshi/markets</code></a> — markets (optional query: <code>limit</code>, <code>cursor</code>, <code>status</code>)</li>
         <li><a href="/kalshi/ws/smoke"><code>GET /kalshi/ws/smoke</code></a> — WebSocket auth + ticker subscription (may take a few seconds)</li>
-        <li><a href="/kalshi/calendar-live"><code>GET /kalshi/calendar-live</code></a> — open + multivariate events (nested markets), max 10, calendar-style scoring</li>
-        <li><a href="/dev/kalshi-calendar-live">Calendar LIVE table</a> — fetches <code>/kalshi/calendar-live</code> in the browser</li>
+        <li><a href="/kalshi/calendar-live"><code>GET /kalshi/calendar-live</code></a> — open + multivariate events (nested markets), cap from <code>KALSHI_CALENDAR_LIVE_MAX_EVENTS</code></li>
+        <li><a href="/kalshi/calendar-live-sports"><code>GET /kalshi/calendar-live-sports</code></a> — same shape, sports-only + <code>parity</code> vs calendar-live top N</li>
+        <li><a href="/dev/kalshi-calendar-live">Calendar LIVE table</a> — fetches <code>/kalshi/calendar-live</code></li>
+        <li><a href="/dev/kalshi-calendar-live-sports">Sports calendar LIVE table</a> — fetches <code>/kalshi/calendar-live-sports</code></li>
       </ul>
     </section>
     <section class="hub-section" id="hub-calendar">
       <h2>Calendar LIVE (Kalshi)</h2>
-      <p>Open markets aligned with calendar-style LIVE heuristics (milestones + open events + multivariate). Same data as <a href="/kalshi/calendar-live"><code>GET /kalshi/calendar-live</code></a>.</p>
+      <p>Open markets aligned with calendar-style LIVE heuristics (milestones + open events + multivariate). Full list: <a href="/kalshi/calendar-live"><code>GET /kalshi/calendar-live</code></a>. Sports-only: <a href="/kalshi/calendar-live-sports"><code>GET /kalshi/calendar-live-sports</code></a>.</p>
       <ul class="links">
         <li><a href="/dev/kalshi-calendar-live">Calendar LIVE table</a></li>
+        <li><a href="/dev/kalshi-calendar-live-sports">Sports calendar LIVE table</a></li>
       </ul>
     </section>
     <section class="hub-section" id="hub-crud">
@@ -286,6 +289,179 @@ CALENDAR_LIVE_HTML = """<!DOCTYPE html>
             meta.appendChild(document.createTextNode(" · series "));
             meta.appendChild(codeText(row.series_ticker || ""));
             meta.appendChild(document.createTextNode(" · source " + (row.source || "") + (row.in_milestone_set ? " · milestone" : "")));
+            art.appendChild(meta);
+            if (row.kalshi_url) {
+              const a = document.createElement("a");
+              a.href = row.kalshi_url;
+              a.textContent = row.kalshi_url;
+              a.rel = "noopener noreferrer";
+              art.appendChild(a);
+            }
+            const mkt = row.markets || [];
+            if (mkt.length) {
+              const tbl = document.createElement("table");
+              const thead = document.createElement("thead");
+              const hr = document.createElement("tr");
+              for (const h of ["Market", "Status", "Yes bid", "Yes ask", "Last", "Vol"]) {
+                const th = document.createElement("th");
+                th.textContent = h;
+                hr.appendChild(th);
+              }
+              thead.appendChild(hr);
+              tbl.appendChild(thead);
+              const tb = document.createElement("tbody");
+              for (const m of mkt) {
+                const tr = document.createElement("tr");
+                const t1 = document.createElement("td");
+                const c = codeText(m.ticker || "");
+                t1.appendChild(c);
+                tr.appendChild(t1);
+                const st = document.createElement("td");
+                st.textContent = m.status || "";
+                tr.appendChild(st);
+                for (const k of ["yes_bid_dollars", "yes_ask_dollars", "last_price_dollars", "volume_fp"]) {
+                  const td = document.createElement("td");
+                  td.textContent = m[k] != null ? String(m[k]) : "";
+                  tr.appendChild(td);
+                }
+                tb.appendChild(tr);
+              }
+              tbl.appendChild(tb);
+              art.appendChild(tbl);
+            }
+            const pre = document.createElement("pre");
+            pre.className = "raw";
+            pre.textContent = JSON.stringify(row.event, null, 2);
+            art.appendChild(pre);
+            frag.appendChild(art);
+          }
+          root.replaceChildren(frag);
+        })
+        .catch((e) => {
+          const p = textEl("p", "Failed: " + String(e));
+          p.className = "err";
+          root.replaceChildren(p);
+        });
+    }
+    refresh();
+  </script>
+</body>
+</html>
+"""
+
+SPORTS_CALENDAR_LIVE_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sports calendar LIVE</title>
+  <style>
+    :root { --bg: #0f1419; --panel: #1a2332; --text: #e7ecf3; --muted: #8b9cb3; --accent: #5b9fd4; --border: #2a3a4d; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 1rem 1.25rem; max-width: 72rem; }
+    h1 { font-size: 1.1rem; margin: 0 0 0.75rem; }
+    p { color: var(--muted); font-size: 0.88rem; margin: 0 0 1rem; }
+    a { color: var(--accent); }
+    .err { color: #e07070; }
+    article { border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem; background: var(--panel); }
+    article h2 { font-size: 0.95rem; margin: 0 0 0.35rem; font-weight: 600; }
+    .meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.5rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.5rem; }
+    th, td { text-align: left; padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--border); vertical-align: top; word-break: break-word; }
+    th { color: var(--muted); font-weight: 600; }
+    tbody tr:hover { background: rgba(0,0,0,0.15); }
+    code { font-size: 0.88em; }
+    pre.raw { overflow: auto; max-height: 14rem; font-size: 0.72rem; background: var(--bg); padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0 0; white-space: pre-wrap; }
+    pre.parity { overflow: auto; max-height: 10rem; font-size: 0.72rem; background: #121a24; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0 0; white-space: pre-wrap; border: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <h1>Sports calendar LIVE</h1>
+  <p>Loads <code>/kalshi/calendar-live-sports</code> (same origin). <a href="/">Dev hub</a> · <a href="/dev/requests">Live request log</a> · <a href="/dev/kalshi-calendar-live">Full calendar LIVE</a></p>
+  <div id="root"></div>
+  <script>
+    const root = document.getElementById("root");
+    function textEl(tag, t) {
+      const n = document.createElement(tag);
+      n.textContent = t;
+      return n;
+    }
+    function codeText(t) {
+      const c = document.createElement("code");
+      c.textContent = t;
+      return c;
+    }
+    function refresh() {
+      root.replaceChildren(textEl("p", "Loading…"));
+      fetch("/kalshi/calendar-live-sports")
+        .then(async (r) => {
+          const text = await r.text();
+          let data = null;
+          try {
+            data = text ? JSON.parse(text) : null;
+          } catch (_) {
+            data = null;
+          }
+          if (!r.ok) {
+            let detail = "";
+            if (data && data.detail != null) {
+              detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+            } else if (text) {
+              detail = text.slice(0, 1200);
+            }
+            throw new Error(r.status + " " + r.statusText + (detail ? ": " + detail : ""));
+          }
+          if (!data) {
+            throw new Error("Expected JSON from /kalshi/calendar-live-sports");
+          }
+          return data;
+        })
+        .then((data) => {
+          const frag = document.createDocumentFragment();
+          const summary = textEl("p", "");
+          summary.className = "meta";
+          const parts = [
+            "returned=" + data.returned,
+            "filter=" + (data.filter || ""),
+            "source=" + (data.source || "aggregation"),
+          ];
+          if (data.sports_live_tz) parts.push("tz=" + data.sports_live_tz);
+          if (data.milestone_live_event_tickers_count != null) parts.push("milestone_live=" + data.milestone_live_event_tickers_count);
+          summary.textContent = parts.join(" · ");
+          frag.appendChild(summary);
+          if (data.parity) {
+            const ph = textEl("h2", "Parity vs calendar-live top N");
+            ph.style.fontSize = "0.9rem";
+            ph.style.marginTop = "0.5rem";
+            frag.appendChild(ph);
+            const pp = document.createElement("pre");
+            pp.className = "parity";
+            pp.textContent = JSON.stringify(data.parity, null, 2);
+            frag.appendChild(pp);
+          }
+          const events = data.events || [];
+          for (const row of events) {
+            const art = document.createElement("article");
+            const heading = row.title || row.event_ticker || "";
+            const badges = [];
+            if (row.is_live) badges.push("LIVE");
+            if (row.widget_status && row.widget_status !== "live") badges.push(row.widget_status);
+            if (row.game_status) badges.push(row.game_status);
+            const titleLine = badges.length ? heading + " [" + badges.join(" · ") + "]" : heading;
+            art.appendChild(textEl("h2", titleLine));
+            if (row.live_title) {
+              const ltDiv = textEl("div", row.live_title);
+              ltDiv.style.fontSize = "0.82rem";
+              ltDiv.style.fontWeight = "600";
+              ltDiv.style.color = "#5ddf7c";
+              ltDiv.style.marginBottom = "0.3rem";
+              art.appendChild(ltDiv);
+            }
+            const meta = textEl("div", "");
+            meta.className = "meta";
+            meta.appendChild(codeText(row.event_ticker || ""));
+            meta.appendChild(document.createTextNode(" · series "));
+            meta.appendChild(codeText(row.series_ticker || ""));
+            meta.appendChild(document.createTextNode(" · source " + (row.source || "")));
             art.appendChild(meta);
             if (row.kalshi_url) {
               const a = document.createElement("a");
@@ -446,3 +622,7 @@ def mount_dev_console(app: FastAPI, settings: Settings) -> None:
     @app.get("/dev/kalshi-calendar-live", include_in_schema=False)
     def dev_kalshi_calendar_live() -> HTMLResponse:
         return HTMLResponse(CALENDAR_LIVE_HTML)
+
+    @app.get("/dev/kalshi-calendar-live-sports", include_in_schema=False)
+    def dev_kalshi_calendar_live_sports() -> HTMLResponse:
+        return HTMLResponse(SPORTS_CALENDAR_LIVE_HTML)

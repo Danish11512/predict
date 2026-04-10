@@ -54,6 +54,29 @@ class Settings(BaseSettings):
         validation_alias="CORS_ALLOWED_ORIGINS",
     )
 
+    kalshi_calendar_live_max_events: int = Field(
+        default=10,
+        ge=1,
+        le=200,
+        validation_alias="KALSHI_CALENDAR_LIVE_MAX_EVENTS",
+        description="Max events returned by /kalshi/calendar-live and /kalshi/calendar-live-sports.",
+    )
+    kalshi_sports_live_tz: str = Field(
+        default="America/New_York",
+        validation_alias="KALSHI_SPORTS_LIVE_TZ",
+        description="IANA zone for optional same-calendar-day filter on sports endpoint.",
+    )
+    kalshi_sports_series_prefixes_extra: str = Field(
+        default="",
+        validation_alias="KALSHI_SPORTS_SERIES_PREFIXES_EXTRA",
+        description="Comma-separated extra series ticker prefixes (e.g. KXFOO,KXBAR) for sports classification.",
+    )
+    kalshi_sports_live_require_today_et: bool = Field(
+        default=False,
+        validation_alias="KALSHI_SPORTS_LIVE_REQUIRE_TODAY_ET",
+        description="If true, sports rows must touch the configured local calendar day (parsed from API times).",
+    )
+
     @field_validator("kalshi_private_key_pem", mode="before")
     @classmethod
     def expand_pem_newlines(cls, value: object) -> object:
