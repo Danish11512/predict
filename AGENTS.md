@@ -16,7 +16,7 @@
 ## Learned Workspace Facts
 
 - Backend: Python/FastAPI in `backend/`, managed with `uv`, no pytest/ruff configured; settings are Pydantic with `validation_alias` env vars in `backend/src/backend/settings.py`
-- Frontend: Vite + React in `frontend/`, managed with `bun`; React Router 7 Framework Mode (`src/app/`, `react-router.config.ts`, route modules); shadcn/ui + Tailwind; path aliases per top-level `src/` folder (e.g. `@components`, `@app`, `@typings` for `src/types`); browser `fetch` targets `/api` (Vite proxy to FastAPI)
+- Frontend: Vite + React in `frontend/`, managed with `bun`; React Router 7 Framework Mode (`src/app/`, `react-router.config.ts`, route modules); shadcn/ui + Tailwind v4; register shadcn CSS variables in `@theme inline` (e.g. `--color-background: var(--background)`) so utilities like `bg-background` emit CSS; path aliases per top-level `src/` folder (e.g. `@components`, `@app`, `@typings` for `src/types`); browser `fetch` targets `/api` (Vite proxy to FastAPI)
 - Kalshi signing: HMAC over `timestamp + METHOD + path` (no query string); REST base and WS URL from env
 - Kalshi LIVE detection: `promoted_milestone_id` on event -> `GET /live_data/batch` -> `details.status == "live"` and `widget_status == "live"` means in-play
 - Sports classification: series ticker prefix allowlist + category/metadata/title heuristics + multivariate leg checking in `backend/src/backend/kalshi/sports_live.py`; in-play filter via `KALSHI_SPORTS_CALENDAR_LIVE_IN_PLAY_ONLY` (default true, `?in_play_only=false` overrides)

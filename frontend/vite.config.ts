@@ -26,6 +26,7 @@ export default defineConfig({
       '@styles': path.join(src, 'styles'),
       /** `src/types` — not `@types` (reserved for DefinitelyTyped / npm scope) */
       '@typings': path.join(src, 'types'),
+      '@utils': path.join(src, 'utils'),
     },
   },
   server: {

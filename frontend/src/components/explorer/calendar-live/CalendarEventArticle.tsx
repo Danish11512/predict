@@ -33,6 +33,31 @@ function CalendarEventArticleInner({ row, isSportsCalendar }: CalendarEventArtic
     ? buildSportsTitle(row)
     : String(row.title ?? row.event_ticker ?? '')
 
+  const eventTickerDescription = useMemo(() => {
+    if (row.title == null) {
+      return null
+    }
+    const s = String(row.title).trim()
+    return s.length > 0 ? s : null
+  }, [row.title])
+
+  const seriesHumanLabel = useMemo(() => {
+    const parts: string[] = []
+    if (row.series_title != null) {
+      const s = String(row.series_title).trim()
+      if (s.length > 0) {
+        parts.push(s)
+      }
+    }
+    if (row.series_category != null) {
+      const s = String(row.series_category).trim()
+      if (s.length > 0) {
+        parts.push(s)
+      }
+    }
+    return parts.length > 0 ? parts.join(' · ') : null
+  }, [row.series_category, row.series_title])
+
   const rawJson = useMemo(() => {
     try {
       return JSON.stringify(row.event ?? {}, null, 2)
@@ -51,11 +76,24 @@ function CalendarEventArticleInner({ row, isSportsCalendar }: CalendarEventArtic
       <h2 className="calendar-live-explorer__article-title">{title}</h2>
       {liveTitle ? <div className="calendar-live-explorer__live-title">{liveTitle}</div> : null}
       <div className="calendar-live-explorer__meta">
-        <code>{row.event_ticker ?? ''}</code>
-        <span> · series </span>
-        <code>{row.series_ticker ?? ''}</code>
-        <span> · source {row.source ?? ''}</span>
-        {!isSportsCalendar && row.in_milestone_set ? <span> · milestone</span> : null}
+        <div className="calendar-live-explorer__meta-row">
+          <span className="calendar-live-explorer__meta-k">Event</span>
+          <code className="calendar-live-explorer__meta-code">{row.event_ticker ?? ''}</code>
+          {eventTickerDescription ? (
+            <span className="calendar-live-explorer__meta-human"> · {eventTickerDescription}</span>
+          ) : null}
+        </div>
+        <div className="calendar-live-explorer__meta-row">
+          <span className="calendar-live-explorer__meta-k">Series</span>
+          <code className="calendar-live-explorer__meta-code">{row.series_ticker ?? ''}</code>
+          {seriesHumanLabel ? (
+            <span className="calendar-live-explorer__meta-human"> · {seriesHumanLabel}</span>
+          ) : null}
+        </div>
+        <div className="calendar-live-explorer__meta-row calendar-live-explorer__meta-row--minor">
+          <span>source {row.source ?? ''}</span>
+          {!isSportsCalendar && row.in_milestone_set ? <span> · milestone</span> : null}
+        </div>
       </div>
       {row.kalshi_url ? (
         <a

@@ -17,7 +17,8 @@
       "@shared/*": ["./src/shared/*"],
       "@stores/*": ["./src/stores/*"],
       "@styles/*": ["./src/styles/*"],
-      "@typings/*": ["./src/types/*"]
+      "@typings/*": ["./src/types/*"],
+      "@utils/*": ["./src/utils/*"]
     },
     "ignoreDeprecations": "6.0",
 

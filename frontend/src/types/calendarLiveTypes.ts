@@ -2,6 +2,10 @@
 
 export type CalendarLiveMarketRow = {
   ticker?: string
+  /** Kalshi short yes-side label; preferred for display when present. */
+  yes_sub_title?: unknown
+  /** Kalshi market title (human-readable contract question). */
+  title?: unknown
   status?: string
   yes_bid_dollars?: unknown
   yes_ask_dollars?: unknown
@@ -13,6 +17,10 @@ export type CalendarLiveEventRow = {
   event_ticker?: string
   title?: unknown
   series_ticker?: string
+  /** From GET /series/{ticker} — e.g. "PGA Tour". */
+  series_title?: unknown
+  /** From GET /series/{ticker} — e.g. "Sports". */
+  series_category?: unknown
   kalshi_url?: string
   source?: string
   in_milestone_set?: boolean

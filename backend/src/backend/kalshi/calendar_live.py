@@ -315,6 +315,21 @@ async def _fetch_series(settings: Settings, series_ticker: str) -> dict[str, Any
     return s if isinstance(s, dict) else None
 
 
+def _series_title_and_category(series_obj: dict[str, Any] | None) -> tuple[str | None, str | None]:
+    """Human-readable series title and category from ``GET /series/{ticker}``."""
+    if not isinstance(series_obj, dict):
+        return (None, None)
+    raw_t = series_obj.get("title")
+    raw_c = series_obj.get("category")
+    st = raw_t.strip() if isinstance(raw_t, str) else None
+    if st == "":
+        st = None
+    sc = raw_c.strip() if isinstance(raw_c, str) else None
+    if sc == "":
+        sc = None
+    return (st, sc)
+
+
 async def _fetch_single_event_with_markets(settings: Settings, event_ticker: str) -> dict[str, Any] | None:
     try:
         data = await _get_json(
@@ -457,12 +472,15 @@ def _shape_out_events(
             event_product_metadata=epm,
             series_product_metadata=spm if isinstance(spm, dict) else None,
         )
+        series_title, series_category = _series_title_and_category(series_obj)
         markets = ev.get("markets") if isinstance(ev.get("markets"), list) else []
         out_events.append(
             {
                 "event_ticker": et,
                 "title": ev.get("title"),
                 "series_ticker": series_ticker,
+                "series_title": series_title,
+                "series_category": series_category,
                 "kalshi_url": url,
                 "source": agg.sources.get(et, "unknown"),
                 "in_milestone_set": et in agg.ms.all_tickers,
@@ -705,6 +723,7 @@ async def _build_sports_from_card_feed(settings: Settings, max_events: int) -> d
             event_product_metadata=epm,
             series_product_metadata=spm if isinstance(spm, dict) else None,
         )
+        series_title, series_category = _series_title_and_category(series_obj)
         markets = ev.get("markets") if isinstance(ev.get("markets"), list) else []
 
         mid = ticker_to_milestone.get(et)
@@ -725,6 +744,8 @@ async def _build_sports_from_card_feed(settings: Settings, max_events: int) -> d
             "event_ticker": et,
             "title": ev.get("title"),
             "series_ticker": series_ticker,
+            "series_title": series_title,
+            "series_category": series_category,
             "kalshi_url": url,
             "source": "card_feed",
             "is_live": et in live_section_tickers,
