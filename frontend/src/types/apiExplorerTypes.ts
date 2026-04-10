@@ -29,10 +29,18 @@ export interface ApiExplorerEndpoint {
   responseKind: ApiExplorerResponseKind
 }
 
+export const EndpointFetchStatus = {
+  Loading: 'loading',
+  Ok: 'ok',
+  Error: 'error',
+} as const
+
+export type EndpointFetchStatus = (typeof EndpointFetchStatus)[keyof typeof EndpointFetchStatus]
+
 export type EndpointFetchState =
-  | { status: 'loading' }
-  | { status: 'ok'; bodyText: string; contentType: string }
-  | { status: 'error'; message: string }
+  | { status: typeof EndpointFetchStatus.Loading }
+  | { status: typeof EndpointFetchStatus.Ok; bodyText: string; contentType: string }
+  | { status: typeof EndpointFetchStatus.Error; message: string }
 
 export interface EndpointResponsePanelProps {
   endpoint: ApiExplorerEndpoint
@@ -41,3 +49,7 @@ export interface EndpointResponsePanelProps {
 export interface JsonTablePreviewProps {
   text: string
 }
+
+/** True when the explorer endpoint expects JSON in the UI (vs HTML preview). */
+export const isExplorerResponseJson = (kind: ApiExplorerResponseKind): boolean =>
+  kind === ApiExplorerResponseKind.Json

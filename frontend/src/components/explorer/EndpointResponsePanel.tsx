@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useState } from 'react'
 
 import { Badge } from '@components/ui/badge'
+import { DataUpdatedAgo } from '@components/explorer/DataUpdatedAgo'
 import { CalendarLiveExplorerPanel } from '@components/explorer/calendar-live/CalendarLiveExplorerPanel'
 import { SportsCalendarLiveExplorerPanel } from '@components/explorer/calendar-live/SportsCalendarLiveExplorerPanel'
 import { ScrollArea } from '@components/ui/scrollArea'
@@ -10,6 +11,8 @@ import { toProxiedUrl } from '@shared/lib/apiProxy'
 import {
   ApiExplorerEndpointId,
   ApiExplorerResponseKind,
+  EndpointFetchStatus,
+  isExplorerResponseJson,
   type EndpointFetchState,
   type EndpointResponsePanelProps,
   type JsonTablePreviewProps,
@@ -113,7 +116,10 @@ function formatCell(value: unknown): string {
 }
 
 function GenericEndpointResponsePanel({ endpoint }: EndpointResponsePanelProps) {
-  const [state, setState] = useState<EndpointFetchState>({ status: 'loading' })
+  const [state, setState] = useState<EndpointFetchState>({
+    status: EndpointFetchStatus.Loading,
+  })
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | undefined>(undefined)
 
   const url = useMemo(() => toProxiedUrl(endpoint.proxyPath), [endpoint.proxyPath])
 
@@ -130,20 +136,23 @@ function GenericEndpointResponsePanel({ endpoint }: EndpointResponsePanelProps) 
         const bodyText = await res.text()
         const contentType = res.headers.get('content-type') ?? ''
         if (!res.ok) {
+          setLastUpdatedAt(undefined)
           setState({
-            status: 'error',
+            status: EndpointFetchStatus.Error,
             message: `HTTP ${res.status} ${res.statusText}\n\n${bodyText.slice(0, 4000)}`,
           })
           return
         }
-        setState({ status: 'ok', bodyText, contentType })
+        setLastUpdatedAt(Date.now())
+        setState({ status: EndpointFetchStatus.Ok, bodyText, contentType })
       })
       .catch((e: unknown) => {
         if (e instanceof DOMException && e.name === 'AbortError') {
           return
         }
         const message = e instanceof Error ? e.message : 'Request failed'
-        setState({ status: 'error', message })
+        setLastUpdatedAt(undefined)
+        setState({ status: EndpointFetchStatus.Error, message })
       })
     return () => ac.abort()
   }, [endpoint.responseKind, url])
@@ -155,6 +164,9 @@ function GenericEndpointResponsePanel({ endpoint }: EndpointResponsePanelProps) 
           Response
         </h2>
         <div className="endpoint-panel__badges">
+          <DataUpdatedAgo
+            updatedAt={state.status === EndpointFetchStatus.Ok ? lastUpdatedAt : undefined}
+          />
           <Badge variant="secondary">{endpoint.responseKind.toUpperCase()}</Badge>
           <Badge variant="outline" className="endpoint-panel__url-badge">
             {url}
@@ -162,22 +174,22 @@ function GenericEndpointResponsePanel({ endpoint }: EndpointResponsePanelProps) 
         </div>
       </div>
       <Separator className="my-3" />
-      {state.status === 'loading' ? (
+      {state.status === EndpointFetchStatus.Loading ? (
         <div className="endpoint-panel__skeletons" aria-busy="true">
           <Skeleton className="h-8 w-full max-w-md" />
           <Skeleton className="h-40 w-full" />
         </div>
       ) : null}
-      {state.status === 'error' ? (
+      {state.status === EndpointFetchStatus.Error ? (
         <pre className="endpoint-panel__raw endpoint-panel__raw--error" role="alert">
           {state.message}
         </pre>
       ) : null}
-      {state.status === 'ok' ? (
+      {state.status === EndpointFetchStatus.Ok ? (
         <div className="endpoint-panel__columns">
           <div className="endpoint-panel__column">
             <h3 className="endpoint-panel__subheading">Formatted</h3>
-            {endpoint.responseKind === ApiExplorerResponseKind.Json ? (
+            {isExplorerResponseJson(endpoint.responseKind) ? (
               <JsonTablePreview text={state.bodyText} />
             ) : (
               <ScrollArea className="endpoint-panel__html-preview">
@@ -189,7 +201,7 @@ function GenericEndpointResponsePanel({ endpoint }: EndpointResponsePanelProps) 
             <h3 className="endpoint-panel__subheading">Raw</h3>
             <ScrollArea className="endpoint-panel__raw-scroll">
               <pre className="endpoint-panel__raw">
-                {endpoint.responseKind === ApiExplorerResponseKind.Json
+                {isExplorerResponseJson(endpoint.responseKind)
                   ? (formatJsonIfPossible(state.bodyText) ?? state.bodyText)
                   : state.bodyText}
               </pre>

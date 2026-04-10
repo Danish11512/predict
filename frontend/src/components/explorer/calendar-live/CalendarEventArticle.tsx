@@ -6,7 +6,8 @@ import { CalendarMarketsTable } from './CalendarMarketsTable'
 
 export type CalendarEventArticleProps = {
   row: CalendarLiveEventRow
-  variant: 'general' | 'sports'
+  /** When true, use sports LIVE title and badge styling. */
+  isSportsCalendar: boolean
 }
 
 function buildSportsTitle(row: CalendarLiveEventRow): string {
@@ -27,9 +28,10 @@ function buildSportsTitle(row: CalendarLiveEventRow): string {
   return `${heading} [${badges.join(' · ')}]`
 }
 
-function CalendarEventArticleInner({ row, variant }: CalendarEventArticleProps) {
-  const title =
-    variant === 'sports' ? buildSportsTitle(row) : String(row.title ?? row.event_ticker ?? '')
+function CalendarEventArticleInner({ row, isSportsCalendar }: CalendarEventArticleProps) {
+  const title = isSportsCalendar
+    ? buildSportsTitle(row)
+    : String(row.title ?? row.event_ticker ?? '')
 
   const rawJson = useMemo(() => {
     try {
@@ -40,7 +42,7 @@ function CalendarEventArticleInner({ row, variant }: CalendarEventArticleProps) 
   }, [row.event])
 
   const liveTitle =
-    variant === 'sports' && row.live_title != null && String(row.live_title).length > 0
+    isSportsCalendar && row.live_title != null && String(row.live_title).length > 0
       ? String(row.live_title)
       : null
 
@@ -53,7 +55,7 @@ function CalendarEventArticleInner({ row, variant }: CalendarEventArticleProps) 
         <span> · series </span>
         <code>{row.series_ticker ?? ''}</code>
         <span> · source {row.source ?? ''}</span>
-        {variant === 'general' && row.in_milestone_set ? <span> · milestone</span> : null}
+        {!isSportsCalendar && row.in_milestone_set ? <span> · milestone</span> : null}
       </div>
       {row.kalshi_url ? (
         <a

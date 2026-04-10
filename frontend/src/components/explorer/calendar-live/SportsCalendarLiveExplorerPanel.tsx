@@ -1,41 +1,25 @@
-import { memo, useCallback, useState } from 'react'
+import { memo } from 'react'
 
 import { Badge } from '@components/ui/badge'
 import { Separator } from '@components/ui/separator'
 import { Skeleton } from '@components/ui/skeleton'
+import { DataUpdatedAgo } from '@components/explorer/DataUpdatedAgo'
 import { HttpRequestSpecSection } from '@components/explorer/http/HttpRequestSpecSection'
-import { useVisibleInterval } from '@hooks/useVisibleInterval'
-import { fetchJsonObject } from '@shared/lib/fetchJsonObject'
+import { useCalendarLiveExplorerPoll } from '@hooks/useCalendarLiveExplorerPoll'
 import { toProxiedUrl } from '@shared/lib/apiProxy'
-import { useExplorerUiStore } from '@stores/explorerUiStore'
+import { useCalendarLiveExplorerStore } from '@stores/calendarLiveExplorerStore'
+import { CalendarLiveExplorerEntryStatus } from '@typings/calendarLiveExplorerTypes'
 import type { SportsCalendarLivePayload } from '@typings/calendarLiveTypes'
 import type { ApiExplorerEndpoint } from '@typings/apiExplorerTypes'
 
 import { CalendarEventArticle } from './CalendarEventArticle'
 import './calendarLiveExplorer.css'
 
-const POLL_MS = 2000
-
 function SportsCalendarLiveExplorerPanelInner({ endpoint }: { endpoint: ApiExplorerEndpoint }) {
   const url = toProxiedUrl(endpoint.proxyPath)
-  const touch = useExplorerUiStore((s) => s.touchEndpointFreshness)
-  const [state, setState] = useState<
-    | { status: 'loading' }
-    | { status: 'error'; message: string }
-    | { status: 'ok'; payload: SportsCalendarLivePayload }
-  >({ status: 'loading' })
+  const entry = useCalendarLiveExplorerStore((s) => s.entries[endpoint.id])
 
-  const load = useCallback(async () => {
-    const res = await fetchJsonObject<SportsCalendarLivePayload>(url)
-    if (!res.ok) {
-      setState({ status: 'error', message: res.message })
-      return
-    }
-    touch(endpoint.id)
-    setState({ status: 'ok', payload: res.data })
-  }, [endpoint.id, touch, url])
-
-  useVisibleInterval(load, POLL_MS)
+  useCalendarLiveExplorerPoll<SportsCalendarLivePayload>(endpoint)
 
   return (
     <section className="endpoint-panel" aria-labelledby={`sports-calendar-heading-${endpoint.id}`}>
@@ -44,6 +28,11 @@ function SportsCalendarLiveExplorerPanelInner({ endpoint }: { endpoint: ApiExplo
           Sports calendar LIVE
         </h2>
         <div className="endpoint-panel__badges">
+          <DataUpdatedAgo
+            updatedAt={
+              entry?.status === CalendarLiveExplorerEntryStatus.Ok ? entry.updatedAt : undefined
+            }
+          />
           <Badge variant="secondary">JSON</Badge>
           <Badge variant="outline" className="endpoint-panel__url-badge">
             {url}
@@ -59,53 +48,57 @@ function SportsCalendarLiveExplorerPanelInner({ endpoint }: { endpoint: ApiExplo
         requestHeaders={{ Accept: 'application/json' }}
       />
       <Separator className="my-4" />
-      {state.status === 'loading' ? (
+      {entry === undefined || entry.status === CalendarLiveExplorerEntryStatus.Loading ? (
         <div className="endpoint-panel__skeletons" aria-busy="true">
           <Skeleton className="h-8 w-full max-w-md" />
           <Skeleton className="h-40 w-full" />
         </div>
       ) : null}
-      {state.status === 'error' ? (
+      {entry?.status === CalendarLiveExplorerEntryStatus.Error ? (
         <pre className="endpoint-panel__raw endpoint-panel__raw--error" role="alert">
-          {state.message}
+          {entry.message}
         </pre>
       ) : null}
-      {state.status === 'ok' ? (
-        <div>
-          <h3 className="calendar-live-explorer__col-title">Formatted</h3>
-          <p className="calendar-live-explorer__summary">
-            {[
-              `returned=${state.payload.returned ?? '—'}`,
-              `filter=${state.payload.filter ?? '—'}`,
-              `source=${state.payload.source ?? 'aggregation'}`,
-              state.payload.sports_live_tz ? `tz=${state.payload.sports_live_tz}` : null,
-              state.payload.milestone_live_event_tickers_count != null
-                ? `milestone_live=${state.payload.milestone_live_event_tickers_count}`
-                : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-          {state.payload.parity ? (
-            <>
-              <h4 className="calendar-live-explorer__parity-title">
-                Parity vs calendar-live top N
-              </h4>
-              <pre className="calendar-live-explorer__parity-pre">
-                {JSON.stringify(state.payload.parity, null, 2)}
-              </pre>
-            </>
-          ) : null}
-          {(state.payload.events ?? []).map((row, i) => (
-            <CalendarEventArticle
-              key={row.event_ticker != null ? String(row.event_ticker) : `ev-${i}`}
-              row={row}
-              variant="sports"
-            />
-          ))}
-        </div>
+      {entry?.status === CalendarLiveExplorerEntryStatus.Ok ? (
+        <SportsCalendarLiveOkBody payload={entry.payload as SportsCalendarLivePayload} />
       ) : null}
     </section>
+  )
+}
+
+function SportsCalendarLiveOkBody({ payload }: { payload: SportsCalendarLivePayload }) {
+  return (
+    <div>
+      <h3 className="calendar-live-explorer__col-title">Formatted</h3>
+      <p className="calendar-live-explorer__summary">
+        {[
+          `returned=${payload.returned ?? '—'}`,
+          `filter=${payload.filter ?? '—'}`,
+          `source=${payload.source ?? 'aggregation'}`,
+          payload.sports_live_tz ? `tz=${payload.sports_live_tz}` : null,
+          payload.milestone_live_event_tickers_count != null
+            ? `milestone_live=${payload.milestone_live_event_tickers_count}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+      </p>
+      {payload.parity ? (
+        <>
+          <h4 className="calendar-live-explorer__parity-title">Parity vs calendar-live top N</h4>
+          <pre className="calendar-live-explorer__parity-pre">
+            {JSON.stringify(payload.parity, null, 2)}
+          </pre>
+        </>
+      ) : null}
+      {(payload.events ?? []).map((row, i) => (
+        <CalendarEventArticle
+          key={row.event_ticker != null ? String(row.event_ticker) : `ev-${i}`}
+          row={row}
+          isSportsCalendar
+        />
+      ))}
+    </div>
   )
 }
 

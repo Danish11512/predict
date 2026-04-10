@@ -1,41 +1,25 @@
-import { memo, useCallback, useState } from 'react'
+import { memo } from 'react'
 
 import { Badge } from '@components/ui/badge'
 import { Separator } from '@components/ui/separator'
 import { Skeleton } from '@components/ui/skeleton'
+import { DataUpdatedAgo } from '@components/explorer/DataUpdatedAgo'
 import { HttpRequestSpecSection } from '@components/explorer/http/HttpRequestSpecSection'
-import { useVisibleInterval } from '@hooks/useVisibleInterval'
-import { fetchJsonObject } from '@shared/lib/fetchJsonObject'
+import { useCalendarLiveExplorerPoll } from '@hooks/useCalendarLiveExplorerPoll'
 import { toProxiedUrl } from '@shared/lib/apiProxy'
-import { useExplorerUiStore } from '@stores/explorerUiStore'
+import { useCalendarLiveExplorerStore } from '@stores/calendarLiveExplorerStore'
+import { CalendarLiveExplorerEntryStatus } from '@typings/calendarLiveExplorerTypes'
 import type { CalendarLivePayload } from '@typings/calendarLiveTypes'
 import type { ApiExplorerEndpoint } from '@typings/apiExplorerTypes'
 
 import { CalendarEventArticle } from './CalendarEventArticle'
 import './calendarLiveExplorer.css'
 
-const POLL_MS = 2000
-
 function CalendarLiveExplorerPanelInner({ endpoint }: { endpoint: ApiExplorerEndpoint }) {
   const url = toProxiedUrl(endpoint.proxyPath)
-  const touch = useExplorerUiStore((s) => s.touchEndpointFreshness)
-  const [state, setState] = useState<
-    | { status: 'loading' }
-    | { status: 'error'; message: string }
-    | { status: 'ok'; payload: CalendarLivePayload }
-  >({ status: 'loading' })
+  const entry = useCalendarLiveExplorerStore((s) => s.entries[endpoint.id])
 
-  const load = useCallback(async () => {
-    const res = await fetchJsonObject<CalendarLivePayload>(url)
-    if (!res.ok) {
-      setState({ status: 'error', message: res.message })
-      return
-    }
-    touch(endpoint.id)
-    setState({ status: 'ok', payload: res.data })
-  }, [endpoint.id, touch, url])
-
-  useVisibleInterval(load, POLL_MS)
+  useCalendarLiveExplorerPoll<CalendarLivePayload>(endpoint)
 
   return (
     <section className="endpoint-panel" aria-labelledby={`calendar-live-heading-${endpoint.id}`}>
@@ -44,6 +28,11 @@ function CalendarLiveExplorerPanelInner({ endpoint }: { endpoint: ApiExplorerEnd
           Calendar LIVE
         </h2>
         <div className="endpoint-panel__badges">
+          <DataUpdatedAgo
+            updatedAt={
+              entry?.status === CalendarLiveExplorerEntryStatus.Ok ? entry.updatedAt : undefined
+            }
+          />
           <Badge variant="secondary">JSON</Badge>
           <Badge variant="outline" className="endpoint-panel__url-badge">
             {url}
@@ -59,33 +48,33 @@ function CalendarLiveExplorerPanelInner({ endpoint }: { endpoint: ApiExplorerEnd
         requestHeaders={{ Accept: 'application/json' }}
       />
       <Separator className="my-4" />
-      {state.status === 'loading' ? (
+      {entry === undefined || entry.status === CalendarLiveExplorerEntryStatus.Loading ? (
         <div className="endpoint-panel__skeletons" aria-busy="true">
           <Skeleton className="h-8 w-full max-w-md" />
           <Skeleton className="h-40 w-full" />
         </div>
       ) : null}
-      {state.status === 'error' ? (
+      {entry?.status === CalendarLiveExplorerEntryStatus.Error ? (
         <pre className="endpoint-panel__raw endpoint-panel__raw--error" role="alert">
-          {state.message}
+          {entry.message}
         </pre>
       ) : null}
-      {state.status === 'ok' ? (
+      {entry?.status === CalendarLiveExplorerEntryStatus.Ok ? (
         <div>
           <h3 className="calendar-live-explorer__col-title">Formatted</h3>
           <p className="calendar-live-explorer__summary">
-            returned={state.payload.returned ?? '—'} · milestone_event_tickers_count=
-            {state.payload.milestone_event_tickers_count ?? '—'} ·
+            returned={entry.payload.returned ?? '—'} · milestone_event_tickers_count=
+            {entry.payload.milestone_event_tickers_count ?? '—'} ·
             milestone_live_event_tickers_count=
-            {state.payload.milestone_live_event_tickers_count != null
-              ? state.payload.milestone_live_event_tickers_count
+            {entry.payload.milestone_live_event_tickers_count != null
+              ? entry.payload.milestone_live_event_tickers_count
               : '—'}
           </p>
-          {(state.payload.events ?? []).map((row, i) => (
+          {(entry.payload.events ?? []).map((row, i) => (
             <CalendarEventArticle
               key={row.event_ticker != null ? String(row.event_ticker) : `ev-${i}`}
               row={row}
-              variant="general"
+              isSportsCalendar={false}
             />
           ))}
         </div>
