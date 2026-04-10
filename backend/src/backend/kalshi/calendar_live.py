@@ -18,6 +18,34 @@ from backend.settings import Settings
 _log = logging.getLogger(__name__)
 
 _DEFAULT_CALENDAR_LIVE_MAX_EVENTS = 10
+
+# How this snapshot relates to https://kalshi.com/calendar (Sports LIVE strip). See finalize + sports builders.
+_KALSHI_CAL_META_GENERAL = {
+    "matches_kalshi_com_calendar_sports_strip": False,
+    "pipeline": "milestone_scored_open_multivariate",
+    "for_website_sports_live_strip_use": "GET /kalshi/calendar-live-sports",
+    "note": (
+        "Ranked by milestone windows plus open/multivariate heuristics — not the ordered Sports card_feed "
+        "used on kalshi.com/calendar."
+    ),
+}
+_KALSHI_CAL_META_SPORTS_CARD_FEED = {
+    "matches_kalshi_com_calendar_sports_strip": True,
+    "pipeline": "live_data_card_feed_category_sports",
+    "for_website_sports_live_strip_use": None,
+    "note": (
+        "Ordered like GET /v1/live_data/card_feed?category=Sports (same strip as the website when this path is used)."
+    ),
+}
+_KALSHI_CAL_META_SPORTS_AGGREGATION = {
+    "matches_kalshi_com_calendar_sports_strip": False,
+    "pipeline": "milestone_scored_aggregation_sports_filter",
+    "for_website_sports_live_strip_use": "GET /kalshi/calendar-live-sports (retry for card_feed)",
+    "note": (
+        "card_feed failed; sports rows come from milestone aggregation — compare parity.* to calendar-live top N, "
+        "not the website ordering."
+    ),
+}
 _EVENTS_PAGE_LIMIT = 200
 _MILESTONES_LIMIT = 500
 _EVENT_LIST_MAX_PAGES = 2
@@ -483,6 +511,7 @@ async def finalize_calendar_live_payload(
             "returned": len(out_events),
             "milestone_event_tickers_count": len(agg.ms.all_tickers),
             "milestone_live_event_tickers_count": len(agg.ms.live_tickers),
+            "kalshi_calendar": dict(_KALSHI_CAL_META_GENERAL),
             "events": out_events,
         }
 
@@ -522,8 +551,10 @@ async def finalize_calendar_live_payload(
         "milestone_event_tickers_count": len(agg.ms.all_tickers),
         "milestone_live_event_tickers_count": len(agg.ms.live_tickers),
         "filter": "sports",
+        "source": "aggregation",
         "sports_live_tz": settings.kalshi_sports_live_tz,
         "sports_require_today_et": settings.kalshi_sports_live_require_today_et,
+        "kalshi_calendar": dict(_KALSHI_CAL_META_SPORTS_AGGREGATION),
         "parity": parity,
         "events": out_events,
     }
@@ -727,6 +758,7 @@ async def _build_sports_from_card_feed(settings: Settings, max_events: int) -> d
         "source": "card_feed",
         "filter": "sports",
         "sports_live_tz": settings.kalshi_sports_live_tz,
+        "kalshi_calendar": dict(_KALSHI_CAL_META_SPORTS_CARD_FEED),
         "events": out_events,
     }
 

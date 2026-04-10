@@ -74,7 +74,10 @@ async def markets(
 async def calendar_live(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    """Open + multivariate events (nested markets), scored toward calendar-style LIVE; cap from env."""
+    """Open + multivariate events (nested markets), milestone-scored LIVE heuristics — not the kalshi.com Sports strip.
+
+    See response ``kalshi_calendar``; for website Sports LIVE alignment use ``/kalshi/calendar-live-sports``.
+    """
     _require_kalshi_credentials(settings)
     try:
         return await build_calendar_live_payload(settings)
@@ -88,7 +91,7 @@ async def calendar_live(
 async def calendar_live_sports(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    """Same payload shape as calendar-live, filtered to sports-only rows; includes parity vs calendar-live top N."""
+    """Sports LIVE list — prefers ``card_feed`` (kalshi.com/calendar); fallback aggregation includes parity vs calendar-live."""
     _require_kalshi_credentials(settings)
     try:
         return await build_sports_calendar_live_payload(settings)
