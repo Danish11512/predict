@@ -2,132 +2,17 @@
 
 from __future__ import annotations
 
-import re
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from backend.kalshi.constants import (
+    DEFAULT_SPORTS_SERIES_PREFIXES,
+    METADATA_SPORTS_RE,
+    NON_SPORTS_CATEGORIES,
+    SPORTS_CATEGORY_HINTS,
+)
 from backend.settings import Settings
-
-# Default series ticker prefixes (first segment of event_ticker, uppercased) treated as sports.
-_DEFAULT_SPORTS_SERIES_PREFIXES: frozenset[str] = frozenset(
-    {
-        "KXNBA",
-        "KXNBAGAME",
-        "KXWNBA",
-        "KXWNBAGAME",
-        "KXNFL",
-        "KXNFLGAME",
-        "KXMLB",
-        "KXMLBGAME",
-        "KXNHL",
-        "KXNHLGAME",
-        "KXMLS",
-        "KXMLSGAME",
-        "KXNCAAF",
-        "KXNCAA",
-        "KXNCAAM",
-        "KXCFB",
-        "KXCBB",
-        "KXUFC",
-        "KXMMA",
-        "KXPGATOUR",
-        "KXLPGA",
-        "KXEPL",
-        "KXUCL",
-        "KXSERIEA",
-        "KXBUNDESLIGA",
-        "KXLALIGA",
-        "KXF1",
-        "KXNASCAR",
-        "KXINDY",
-        "KXTEN",
-        "KXATP",
-        "KXWTA",
-        "KXOLY",
-        "KXSOCCER",
-        "KXFIFA",
-        "KXUFCFIGHT",
-        "KXBOXING",
-        "KXCRICKET",
-        "KXIPL",
-        "KXRUGBY",
-        "KXSUPERBOWL",
-        # International / regional leagues surfaced by card_feed
-        "KXCONCACAF",
-        "KXCONMEBOL",
-        "KXUECL",
-        "KXUEL",
-        "KXT20",
-        "KXPSL",
-        "KXNPB",
-        "KXKBO",
-        "KXKHL",
-        "KXSHL",
-        "KXAFL",
-        "KXCBA",
-        "KXEUROLEAGUE",
-        "KXSAUDIPL",
-        "KXEGYPL",
-        "KXSUPERLIG",
-        "KXDARTS",
-        "KXAHL",
-        "KXBALLERLEAGUE",
-        "KXUFL",
-    }
-)
-
-# If series.category / tags match these, count as sports (substring, lowercased).
-_SPORTS_CATEGORY_HINTS: frozenset[str] = frozenset(
-    {
-        "sport",
-        "sports",
-        "nba",
-        "nfl",
-        "mlb",
-        "nhl",
-        "mls",
-        "wnba",
-        "ncaa",
-        "golf",
-        "pga",
-        "ufc",
-        "mma",
-        "soccer",
-        "football",
-        "basketball",
-        "baseball",
-        "hockey",
-        "tennis",
-        "f1",
-        "nascar",
-        "olymp",
-        "cricket",
-        "rugby",
-        "boxing",
-    }
-)
-
-# Strong non-sports categories on the series: reject unless a sports prefix matches the event ticker.
-_NON_SPORTS_CATEGORIES: frozenset[str] = frozenset(
-    {
-        "politics",
-        "elections",
-        "economics",
-        "weather",
-        "crypto",
-        "science",
-        "entertainment",
-        "financials",
-        "companies",
-    }
-)
-
-_METADATA_SPORTS_RE = re.compile(
-    r"\b(nba|nfl|mlb|nhl|mls|wnba|ncaa|pga|lpga|ufc|mma|"
-    r"premier league|champions league|soccer|f1|formula|nascar|tennis|olympics?)\b",
-    re.I,
-)
 
 
 def _parse_extra_prefixes(raw: str) -> frozenset[str]:
@@ -136,7 +21,7 @@ def _parse_extra_prefixes(raw: str) -> frozenset[str]:
 
 
 def sports_series_prefixes(settings: Settings) -> frozenset[str]:
-    return _DEFAULT_SPORTS_SERIES_PREFIXES | _parse_extra_prefixes(settings.kalshi_sports_series_prefixes_extra)
+    return DEFAULT_SPORTS_SERIES_PREFIXES | _parse_extra_prefixes(settings.kalshi_sports_series_prefixes_extra)
 
 
 def series_key_from_event_ticker(event_ticker: str) -> str:
@@ -165,13 +50,13 @@ def _metadata_sports_hit(meta: object) -> bool:
     blob = " ".join(acc).lower()
     if not blob.strip():
         return False
-    return _METADATA_SPORTS_RE.search(blob) is not None
+    return METADATA_SPORTS_RE.search(blob) is not None
 
 
 def _category_hint_hit(val: object) -> bool:
     if isinstance(val, str) and val.strip():
         low = val.lower()
-        for hint in _SPORTS_CATEGORY_HINTS:
+        for hint in SPORTS_CATEGORY_HINTS:
             if hint in low:
                 return True
     if isinstance(val, list):
@@ -185,7 +70,7 @@ def _series_non_sports_category(series_obj: dict[str, Any] | None) -> bool:
     if not isinstance(series_obj, dict):
         return False
     cat = series_obj.get("category")
-    if isinstance(cat, str) and cat.strip().lower() in _NON_SPORTS_CATEGORIES:
+    if isinstance(cat, str) and cat.strip().lower() in NON_SPORTS_CATEGORIES:
         return True
     return False
 

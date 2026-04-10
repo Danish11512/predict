@@ -1,0 +1,180 @@
+"""Shared Kalshi tuning literals (limits, public URLs, classification sets)."""
+
+from __future__ import annotations
+
+import re
+from datetime import timedelta
+from typing import Any
+
+# Public Kalshi v1 API (unauthenticated card_feed, live_data, etc.)
+KALSHI_V1_PUBLIC_BASE_URL = "https://api.elections.kalshi.com/v1"
+
+# --- calendar-live snapshot ---
+
+DEFAULT_CALENDAR_LIVE_MAX_EVENTS = 10
+
+# How payloads relate to https://kalshi.com/calendar (Sports LIVE strip).
+KALSHI_CAL_META_GENERAL: dict[str, Any] = {
+    "matches_kalshi_com_calendar_sports_strip": False,
+    "pipeline": "milestone_scored_open_multivariate",
+    "for_website_sports_live_strip_use": "GET /kalshi/calendar-live-sports",
+    "note": (
+        "Ranked by milestone windows plus open/multivariate heuristics — not the ordered Sports card_feed "
+        "used on kalshi.com/calendar."
+    ),
+}
+KALSHI_CAL_META_SPORTS_CARD_FEED: dict[str, Any] = {
+    "matches_kalshi_com_calendar_sports_strip": True,
+    "pipeline": "live_data_card_feed_category_sports",
+    "for_website_sports_live_strip_use": None,
+    "note": (
+        "Ordered like GET /v1/live_data/card_feed?category=Sports (same strip as the website when this path is used)."
+    ),
+}
+KALSHI_CAL_META_SPORTS_AGGREGATION: dict[str, Any] = {
+    "matches_kalshi_com_calendar_sports_strip": False,
+    "pipeline": "milestone_scored_aggregation_sports_filter",
+    "for_website_sports_live_strip_use": "GET /kalshi/calendar-live-sports (retry for card_feed)",
+    "note": (
+        "card_feed failed; sports rows come from milestone aggregation — compare parity.* to calendar-live top N, "
+        "not the website ordering."
+    ),
+}
+
+EVENTS_PAGE_LIMIT = 200
+MILESTONES_LIMIT = 500
+EVENT_LIST_MAX_PAGES = 2
+MILESTONE_LIST_MAX_PAGES = 2
+PRIMARY_LIVE_HYDRATE_MAX = 40
+MILESTONE_END_GRACE = timedelta(hours=8)
+# Sports path can touch hundreds of unique series; each kalshi_get uses its own client — cap concurrency.
+SERIES_FETCH_CONCURRENCY = 16
+
+# When no open events but milestones exist, sample this many milestone tickers for hydration.
+MILESTONE_TICKER_FALLBACK_SAMPLE = 40
+
+# card_feed pagination (max outer iterations)
+CARD_FEED_MAX_PAGES = 3
+
+# Sports-only aggregation pool sizing in finalize_calendar_live_payload (sports_only=True)
+SPORTS_AGGREGATION_POOL_MIN_ROWS = 80
+SPORTS_AGGREGATION_POOL_ME_MULTIPLIER = 40
+SPORTS_AGGREGATION_POOL_MAX_TICKERS = 400
+
+# --- sports classification ---
+
+DEFAULT_SPORTS_SERIES_PREFIXES: frozenset[str] = frozenset(
+    {
+        "KXNBA",
+        "KXNBAGAME",
+        "KXWNBA",
+        "KXWNBAGAME",
+        "KXNFL",
+        "KXNFLGAME",
+        "KXMLB",
+        "KXMLBGAME",
+        "KXNHL",
+        "KXNHLGAME",
+        "KXMLS",
+        "KXMLSGAME",
+        "KXNCAAF",
+        "KXNCAA",
+        "KXNCAAM",
+        "KXCFB",
+        "KXCBB",
+        "KXUFC",
+        "KXMMA",
+        "KXPGATOUR",
+        "KXLPGA",
+        "KXEPL",
+        "KXUCL",
+        "KXSERIEA",
+        "KXBUNDESLIGA",
+        "KXLALIGA",
+        "KXF1",
+        "KXNASCAR",
+        "KXINDY",
+        "KXTEN",
+        "KXATP",
+        "KXWTA",
+        "KXOLY",
+        "KXSOCCER",
+        "KXFIFA",
+        "KXUFCFIGHT",
+        "KXBOXING",
+        "KXCRICKET",
+        "KXIPL",
+        "KXRUGBY",
+        "KXSUPERBOWL",
+        "KXCONCACAF",
+        "KXCONMEBOL",
+        "KXUECL",
+        "KXUEL",
+        "KXT20",
+        "KXPSL",
+        "KXNPB",
+        "KXKBO",
+        "KXKHL",
+        "KXSHL",
+        "KXAFL",
+        "KXCBA",
+        "KXEUROLEAGUE",
+        "KXSAUDIPL",
+        "KXEGYPL",
+        "KXSUPERLIG",
+        "KXDARTS",
+        "KXAHL",
+        "KXBALLERLEAGUE",
+        "KXUFL",
+    }
+)
+
+SPORTS_CATEGORY_HINTS: frozenset[str] = frozenset(
+    {
+        "sport",
+        "sports",
+        "nba",
+        "nfl",
+        "mlb",
+        "nhl",
+        "mls",
+        "wnba",
+        "ncaa",
+        "golf",
+        "pga",
+        "ufc",
+        "mma",
+        "soccer",
+        "football",
+        "basketball",
+        "baseball",
+        "hockey",
+        "tennis",
+        "f1",
+        "nascar",
+        "olymp",
+        "cricket",
+        "rugby",
+        "boxing",
+    }
+)
+
+NON_SPORTS_CATEGORIES: frozenset[str] = frozenset(
+    {
+        "politics",
+        "elections",
+        "economics",
+        "weather",
+        "crypto",
+        "science",
+        "entertainment",
+        "financials",
+        "companies",
+    }
+)
+
+METADATA_SPORTS_RE = re.compile(
+    r"\b(nba|nfl|mlb|nhl|mls|wnba|ncaa|pga|lpga|ufc|mma|"
+    r"premier league|champions league|soccer|f1|formula|nascar|tennis|olympics?)\b",
+    re.I,
+)

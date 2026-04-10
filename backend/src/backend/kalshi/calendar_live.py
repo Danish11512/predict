@@ -11,49 +11,29 @@ from urllib.parse import quote
 
 import httpx
 
+from backend.kalshi.constants import (
+    CARD_FEED_MAX_PAGES,
+    DEFAULT_CALENDAR_LIVE_MAX_EVENTS,
+    EVENT_LIST_MAX_PAGES,
+    EVENTS_PAGE_LIMIT,
+    KALSHI_CAL_META_GENERAL,
+    KALSHI_CAL_META_SPORTS_AGGREGATION,
+    KALSHI_CAL_META_SPORTS_CARD_FEED,
+    MILESTONE_END_GRACE,
+    MILESTONE_LIST_MAX_PAGES,
+    MILESTONE_TICKER_FALLBACK_SAMPLE,
+    MILESTONES_LIMIT,
+    PRIMARY_LIVE_HYDRATE_MAX,
+    SERIES_FETCH_CONCURRENCY,
+    SPORTS_AGGREGATION_POOL_MAX_TICKERS,
+    SPORTS_AGGREGATION_POOL_ME_MULTIPLIER,
+    SPORTS_AGGREGATION_POOL_MIN_ROWS,
+)
 from backend.kalshi.http_client import kalshi_get, kalshi_v1_get
 from backend.kalshi.sports_live import event_is_sports
 from backend.settings import Settings
 
 _log = logging.getLogger(__name__)
-
-_DEFAULT_CALENDAR_LIVE_MAX_EVENTS = 10
-
-# How this snapshot relates to https://kalshi.com/calendar (Sports LIVE strip). See finalize + sports builders.
-_KALSHI_CAL_META_GENERAL = {
-    "matches_kalshi_com_calendar_sports_strip": False,
-    "pipeline": "milestone_scored_open_multivariate",
-    "for_website_sports_live_strip_use": "GET /kalshi/calendar-live-sports",
-    "note": (
-        "Ranked by milestone windows plus open/multivariate heuristics — not the ordered Sports card_feed "
-        "used on kalshi.com/calendar."
-    ),
-}
-_KALSHI_CAL_META_SPORTS_CARD_FEED = {
-    "matches_kalshi_com_calendar_sports_strip": True,
-    "pipeline": "live_data_card_feed_category_sports",
-    "for_website_sports_live_strip_use": None,
-    "note": (
-        "Ordered like GET /v1/live_data/card_feed?category=Sports (same strip as the website when this path is used)."
-    ),
-}
-_KALSHI_CAL_META_SPORTS_AGGREGATION = {
-    "matches_kalshi_com_calendar_sports_strip": False,
-    "pipeline": "milestone_scored_aggregation_sports_filter",
-    "for_website_sports_live_strip_use": "GET /kalshi/calendar-live-sports (retry for card_feed)",
-    "note": (
-        "card_feed failed; sports rows come from milestone aggregation — compare parity.* to calendar-live top N, "
-        "not the website ordering."
-    ),
-}
-_EVENTS_PAGE_LIMIT = 200
-_MILESTONES_LIMIT = 500
-_EVENT_LIST_MAX_PAGES = 2
-_MILESTONE_LIST_MAX_PAGES = 2
-_PRIMARY_LIVE_HYDRATE_MAX = 40
-_MILESTONE_END_GRACE = timedelta(hours=8)
-# Sports path can touch hundreds of unique series; each kalshi_get uses its own client — cap concurrency.
-_SERIES_FETCH_CONCURRENCY = 16
 
 
 def _parse_dt_utc(val: object) -> datetime | None:
@@ -79,7 +59,7 @@ def _milestone_is_live_now(m: dict[str, Any], now: datetime) -> bool:
         return True
     if end >= now:
         return True
-    return (now - end) <= _MILESTONE_END_GRACE
+    return (now - end) <= MILESTONE_END_GRACE
 
 
 class CalendarLiveAggregated(NamedTuple):
@@ -288,9 +268,9 @@ async def _fetch_open_events(settings: Settings) -> list[dict[str, Any]]:
         {
             "status": "open",
             "with_nested_markets": True,
-            "limit": _EVENTS_PAGE_LIMIT,
+            "limit": EVENTS_PAGE_LIMIT,
         },
-        max_pages=_EVENT_LIST_MAX_PAGES,
+        max_pages=EVENT_LIST_MAX_PAGES,
     )
 
 
@@ -298,8 +278,8 @@ async def _fetch_multivariate_events(settings: Settings) -> list[dict[str, Any]]
     return await _fetch_paged_event_list(
         settings,
         "/events/multivariate",
-        {"with_nested_markets": True, "limit": _EVENTS_PAGE_LIMIT},
-        max_pages=_EVENT_LIST_MAX_PAGES,
+        {"with_nested_markets": True, "limit": EVENTS_PAGE_LIMIT},
+        max_pages=EVENT_LIST_MAX_PAGES,
     )
 
 
@@ -307,9 +287,9 @@ async def _fetch_milestones_list(settings: Settings) -> list[dict[str, Any]]:
     start = (datetime.now(timezone.utc) - timedelta(days=4)).strftime("%Y-%m-%dT%H:%M:%SZ")
     milestones: list[dict[str, Any]] = []
     cursor: str | None = None
-    for _ in range(_MILESTONE_LIST_MAX_PAGES):
+    for _ in range(MILESTONE_LIST_MAX_PAGES):
         params: dict[str, Any] = {
-            "limit": _MILESTONES_LIMIT,
+            "limit": MILESTONES_LIMIT,
             "minimum_start_date": start,
         }
         if cursor:
@@ -400,7 +380,7 @@ async def aggregate_calendar_live_candidates(settings: Settings) -> CalendarLive
             by_ticker[et] = e
             sources[et] = "multivariate"
 
-    to_pl = sorted(e for e in ms.primary_live if e not in by_ticker)[:_PRIMARY_LIVE_HYDRATE_MAX]
+    to_pl = sorted(e for e in ms.primary_live if e not in by_ticker)[:PRIMARY_LIVE_HYDRATE_MAX]
     if to_pl:
         pl_rows = await asyncio.gather(*[_fetch_single_event_with_markets(settings, et) for et in to_pl])
         for et, ev_obj in zip(to_pl, pl_rows, strict=True):
@@ -409,7 +389,7 @@ async def aggregate_calendar_live_candidates(settings: Settings) -> CalendarLive
                 sources[et] = "primary_live_hydrate"
 
     if not by_ticker and ms.all_tickers:
-        for et in sorted(ms.all_tickers)[:40]:
+        for et in sorted(ms.all_tickers)[:MILESTONE_TICKER_FALLBACK_SAMPLE]:
             ev_obj = await _fetch_single_event_with_markets(settings, et)
             if ev_obj is None:
                 continue
@@ -428,7 +408,7 @@ async def aggregate_calendar_live_candidates(settings: Settings) -> CalendarLive
 
 def _calendar_live_max_events(settings: Settings) -> int:
     n = settings.kalshi_calendar_live_max_events
-    return n if isinstance(n, int) and n > 0 else _DEFAULT_CALENDAR_LIVE_MAX_EVENTS
+    return n if isinstance(n, int) and n > 0 else DEFAULT_CALENDAR_LIVE_MAX_EVENTS
 
 
 async def _fetch_series_cache_for_tickers(
@@ -446,7 +426,7 @@ async def _fetch_series_cache_for_tickers(
     series_list = sorted(series_needed)
     if not series_list:
         return {}
-    sem = asyncio.Semaphore(_SERIES_FETCH_CONCURRENCY)
+    sem = asyncio.Semaphore(SERIES_FETCH_CONCURRENCY)
 
     async def _one(s: str) -> tuple[str, dict[str, Any] | None]:
         async with sem:
@@ -501,7 +481,7 @@ async def finalize_calendar_live_payload(
     sports_only: bool,
 ) -> dict[str, Any]:
     """Pick top ``max_events`` rows (optionally sports-filtered) and attach series metadata + URLs."""
-    me = max_events if max_events > 0 else _DEFAULT_CALENDAR_LIVE_MAX_EVENTS
+    me = max_events if max_events > 0 else DEFAULT_CALENDAR_LIVE_MAX_EVENTS
     if not sports_only:
         selected = [et for _, _, et in agg.scored[:me]]
         series_cache = await _fetch_series_cache_for_tickers(settings, agg, selected)
@@ -511,11 +491,15 @@ async def finalize_calendar_live_payload(
             "returned": len(out_events),
             "milestone_event_tickers_count": len(agg.ms.all_tickers),
             "milestone_live_event_tickers_count": len(agg.ms.live_tickers),
-            "kalshi_calendar": dict(_KALSHI_CAL_META_GENERAL),
+            "kalshi_calendar": dict(KALSHI_CAL_META_GENERAL),
             "events": out_events,
         }
 
-    pool_limit = min(len(agg.scored), max(80, me * 40), 400)
+    pool_limit = min(
+        len(agg.scored),
+        max(SPORTS_AGGREGATION_POOL_MIN_ROWS, me * SPORTS_AGGREGATION_POOL_ME_MULTIPLIER),
+        SPORTS_AGGREGATION_POOL_MAX_TICKERS,
+    )
     pool_tickers = [et for _, _, et in agg.scored[:pool_limit]]
     series_cache = await _fetch_series_cache_for_tickers(settings, agg, pool_tickers)
 
@@ -554,7 +538,7 @@ async def finalize_calendar_live_payload(
         "source": "aggregation",
         "sports_live_tz": settings.kalshi_sports_live_tz,
         "sports_require_today_et": settings.kalshi_sports_live_require_today_et,
-        "kalshi_calendar": dict(_KALSHI_CAL_META_SPORTS_AGGREGATION),
+        "kalshi_calendar": dict(KALSHI_CAL_META_SPORTS_AGGREGATION),
         "parity": parity,
         "events": out_events,
     }
@@ -579,7 +563,7 @@ async def _fetch_card_feed_sports(max_events: int) -> tuple[list[str], list[dict
     cards: dict[str, Any] = {}
     cursor: str | None = None
 
-    for _ in range(3):
+    for _ in range(CARD_FEED_MAX_PAGES):
         params: dict[str, Any] = {"category": "Sports"}
         if cursor:
             params["cursor"] = cursor
@@ -671,7 +655,7 @@ async def _build_sports_from_card_feed(settings: Settings, max_events: int) -> d
         st = ev.get("series_ticker")
         if isinstance(st, str) and st:
             series_needed.add(st)
-    sem = asyncio.Semaphore(_SERIES_FETCH_CONCURRENCY)
+    sem = asyncio.Semaphore(SERIES_FETCH_CONCURRENCY)
 
     async def _one_series(s: str) -> tuple[str, dict[str, Any] | None]:
         async with sem:
@@ -758,7 +742,7 @@ async def _build_sports_from_card_feed(settings: Settings, max_events: int) -> d
         "source": "card_feed",
         "filter": "sports",
         "sports_live_tz": settings.kalshi_sports_live_tz,
-        "kalshi_calendar": dict(_KALSHI_CAL_META_SPORTS_CARD_FEED),
+        "kalshi_calendar": dict(KALSHI_CAL_META_SPORTS_CARD_FEED),
         "events": out_events,
     }
 
