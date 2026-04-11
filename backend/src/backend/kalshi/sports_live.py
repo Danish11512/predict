@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -13,6 +14,8 @@ from backend.kalshi.constants import (
     SPORTS_CATEGORY_HINTS,
 )
 from backend.settings import Settings
+
+_log = logging.getLogger(__name__)
 
 
 def _parse_extra_prefixes(raw: str) -> frozenset[str]:
@@ -207,6 +210,11 @@ def event_touches_sports_calendar_day(ev: dict[str, Any], settings: Settings) ->
     try:
         tz = ZoneInfo(settings.kalshi_sports_live_tz.strip() or "America/New_York")
     except Exception:
+        _log.warning(
+            "Invalid kalshi_sports_live_tz %r; using America/New_York",
+            settings.kalshi_sports_live_tz,
+            exc_info=True,
+        )
         tz = ZoneInfo("America/New_York")
     now = datetime.now(tz)
     sod = now.replace(hour=0, minute=0, second=0, microsecond=0)

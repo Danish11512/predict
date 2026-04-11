@@ -8,6 +8,7 @@ import { ScrollArea } from '@components/ui/scrollArea'
 import { Separator } from '@components/ui/separator'
 import { Skeleton } from '@components/ui/skeleton'
 import { toProxiedUrl } from '@shared/lib/apiProxy'
+import { devLog } from '@shared/lib/devLog'
 import {
   ApiExplorerEndpointId,
   ApiExplorerResponseKind,
@@ -23,7 +24,8 @@ function formatJsonIfPossible(text: string): string | null {
   try {
     const parsed: unknown = JSON.parse(text)
     return JSON.stringify(parsed, null, 2)
-  } catch {
+  } catch (e) {
+    devLog.debug('raw column: not JSON', { length: text.length, cause: e })
     return null
   }
 }
@@ -32,7 +34,8 @@ function JsonTablePreview({ text }: JsonTablePreviewProps) {
   const parsed: unknown = useMemo(() => {
     try {
       return JSON.parse(text) as unknown
-    } catch {
+    } catch (e) {
+      devLog.debug('table preview: JSON parse skipped', { length: text.length, cause: e })
       return null
     }
   }, [text])
@@ -108,7 +111,8 @@ function formatCell(value: unknown): string {
   if (typeof value === 'object') {
     try {
       return JSON.stringify(value)
-    } catch {
+    } catch (e) {
+      devLog.warn('table cell stringify failed', { cause: e })
       return String(value)
     }
   }
@@ -136,6 +140,11 @@ function GenericEndpointResponsePanel({ endpoint }: EndpointResponsePanelProps) 
         const bodyText = await res.text()
         const contentType = res.headers.get('content-type') ?? ''
         if (!res.ok) {
+          devLog.warn('endpoint fetch HTTP error', {
+            url,
+            status: res.status,
+            preview: bodyText.slice(0, 400),
+          })
           setLastUpdatedAt(undefined)
           setState({
             status: EndpointFetchStatus.Error,
@@ -151,6 +160,7 @@ function GenericEndpointResponsePanel({ endpoint }: EndpointResponsePanelProps) 
           return
         }
         const message = e instanceof Error ? e.message : 'Request failed'
+        devLog.warn('endpoint fetch failed', { url, message, cause: e })
         setLastUpdatedAt(undefined)
         setState({ status: EndpointFetchStatus.Error, message })
       })

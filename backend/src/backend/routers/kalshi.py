@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import httpx
@@ -13,6 +14,7 @@ from backend.kalshi.ws import kalshi_ws_smoke_test
 from backend.settings import Settings, get_settings
 
 router = APIRouter(prefix="/kalshi", tags=["kalshi"])
+_log = logging.getLogger(__name__)
 
 
 def _require_kalshi_credentials(settings: Settings) -> None:
@@ -39,8 +41,10 @@ async def portfolio_balance(
         r.raise_for_status()
         return r.json()
     except httpx.HTTPStatusError as e:
+        _log.warning("Kalshi portfolio_balance HTTP error", exc_info=True)
         raise _http_error(e) from e
     except httpx.RequestError as e:
+        _log.warning("Kalshi portfolio_balance request failed: %s", e, exc_info=True)
         raise HTTPException(status_code=502, detail=str(e)) from e
 
 
@@ -65,8 +69,10 @@ async def markets(
         r.raise_for_status()
         return r.json()
     except httpx.HTTPStatusError as e:
+        _log.warning("Kalshi markets HTTP error", exc_info=True)
         raise _http_error(e) from e
     except httpx.RequestError as e:
+        _log.warning("Kalshi markets request failed: %s", e, exc_info=True)
         raise HTTPException(status_code=502, detail=str(e)) from e
 
 
@@ -82,8 +88,10 @@ async def calendar_live(
     try:
         return await build_calendar_live_payload(settings)
     except httpx.HTTPStatusError as e:
+        _log.warning("calendar-live HTTP error", exc_info=True)
         raise _http_error(e) from e
     except httpx.RequestError as e:
+        _log.warning("calendar-live request failed: %s", e, exc_info=True)
         raise HTTPException(status_code=502, detail=str(e)) from e
 
 
@@ -96,8 +104,10 @@ async def calendar_live_sports(
     try:
         return await build_sports_calendar_live_payload(settings)
     except httpx.HTTPStatusError as e:
+        _log.warning("calendar-live-sports HTTP error", exc_info=True)
         raise _http_error(e) from e
     except httpx.RequestError as e:
+        _log.warning("calendar-live-sports request failed: %s", e, exc_info=True)
         raise HTTPException(status_code=502, detail=str(e)) from e
 
 
@@ -111,4 +121,5 @@ async def ws_smoke(
     try:
         return await kalshi_ws_smoke_test(settings, wait_seconds=wait_seconds)
     except Exception as e:
+        _log.exception("Kalshi WebSocket smoke failed")
         raise HTTPException(status_code=502, detail=str(e)) from e

@@ -1,12 +1,12 @@
 import { memo, useMemo } from 'react'
 
+import { devLog } from '@shared/lib/devLog'
 import type { CalendarLiveEventRow } from '@typings/calendarLiveTypes'
 
 import { CalendarMarketsTable } from './CalendarMarketsTable'
 
 export type CalendarEventArticleProps = {
   row: CalendarLiveEventRow
-  /** When true, use sports LIVE title and badge styling. */
   isSportsCalendar: boolean
 }
 
@@ -61,10 +61,11 @@ function CalendarEventArticleInner({ row, isSportsCalendar }: CalendarEventArtic
   const rawJson = useMemo(() => {
     try {
       return JSON.stringify(row.event ?? {}, null, 2)
-    } catch {
+    } catch (e) {
+      devLog.warn('event JSON stringify failed', { eventTicker: row.event_ticker, cause: e })
       return '{}'
     }
-  }, [row.event])
+  }, [row.event, row.event_ticker])
 
   const liveTitle =
     isSportsCalendar && row.live_title != null && String(row.live_title).length > 0

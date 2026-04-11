@@ -3,6 +3,7 @@ import { useLocation } from 'react-router'
 
 import { useVisibleInterval } from '@hooks/useVisibleInterval'
 import { fetchJsonObject } from '@shared/lib/fetchJsonObject'
+import { devLog } from '@shared/lib/devLog'
 import { toProxiedUrl } from '@shared/lib/apiProxy'
 import { useCalendarLiveExplorerStore } from '@stores/calendarLiveExplorerStore'
 import { useExplorerUiStore } from '@stores/explorerUiStore'
@@ -14,14 +15,8 @@ import {
 import type { CalendarLivePayload } from '@typings/calendarLiveTypes'
 import type { ApiExplorerEndpoint } from '@typings/apiExplorerTypes'
 
-/** One poll per second while the explorer route is mounted, tab visible, and interval enabled. */
 export const CALENDAR_LIVE_POLL_MS = 1000
 
-/**
- * Polls a calendar-live JSON endpoint while this route is active and the browser tab is visible.
- * Updates {@link useCalendarLiveExplorerStore} on each successful response so other UI can read
- * snapshots; skips fetch (and thus store writes) when the tab is hidden or polling is disabled.
- */
 export function useCalendarLiveExplorerPoll<T extends CalendarLivePayload>(
   endpoint: ApiExplorerEndpoint,
   options?: CalendarLiveExplorerPollOptions,
@@ -47,6 +42,11 @@ export function useCalendarLiveExplorerPoll<T extends CalendarLivePayload>(
 
     const res = await fetchJsonObject<T>(url)
     if (!res.ok) {
+      devLog.warn('calendar-live poll error', {
+        endpointId: endpoint.id,
+        url,
+        message: res.message,
+      })
       setEntry(endpoint.id, {
         status: CalendarLiveExplorerEntryStatus.Error,
         message: res.message,

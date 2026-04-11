@@ -1,9 +1,5 @@
 import { useEffect, useRef } from 'react'
 
-/**
- * Runs `callback` on an interval while the browser tab is visible.
- * Runs once immediately when the tab becomes visible again.
- */
 export function useVisibleInterval(callback: () => void, intervalMs: number, enabled = true): void {
   const cbRef = useRef(callback)
 
