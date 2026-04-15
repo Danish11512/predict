@@ -25,10 +25,17 @@ export function useCalendarLiveExplorerPoll<T extends CalendarLivePayload>(
   const extraEnabled = options?.enabled ?? DEFAULT_CALENDAR_LIVE_POLL_ENABLED
 
   const location = useLocation()
+  const extraPathnames = options?.extraPathnames
   const pathOk = useMemo(() => {
     const n = location.pathname.replace(/\/+$/, '') || '/'
-    return n === `/${endpoint.routerPath}`
-  }, [location.pathname, endpoint.routerPath])
+    if (n === `/${endpoint.routerPath}`) {
+      return true
+    }
+    if (extraPathnames === undefined || extraPathnames.length === 0) {
+      return false
+    }
+    return extraPathnames.includes(n)
+  }, [location.pathname, endpoint.routerPath, extraPathnames])
 
   const setEntry = useCalendarLiveExplorerStore((s) => s.setCalendarLiveEntry)
   const touch = useExplorerUiStore((s) => s.touchEndpointFreshness)

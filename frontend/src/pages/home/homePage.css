@@ -1,0 +1,95 @@
+.home-page {
+  width: 100%;
+}
+
+.home-page__grid {
+  display: flex;
+  width: 100%;
+  align-items: stretch;
+  gap: 0;
+  min-height: 70vh;
+}
+
+.home-page__col {
+  flex: 1 1 50%;
+  min-width: 0;
+  border: none;
+  padding: 0 0.5rem;
+}
+
+.home-page__col:first-child {
+  padding-left: 0;
+}
+
+.home-page__col:last-child {
+  padding-right: 0;
+}
+
+.home-page__aside {
+  min-height: 8rem;
+}
+
+.home-games {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.home-games__empty {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--muted-foreground);
+}
+
+.home-games__article {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: color-mix(in srgb, var(--muted) 25%, transparent);
+}
+
+.home-games__title {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.home-games__live-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.home-games__meta {
+  margin: 0 0 0.65rem;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}
+
+.home-games__markets {
+  overflow-x: auto;
+}
+
+.home-games__markets-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.home-games__markets-table th,
+.home-games__markets-table td {
+  padding: 0.35rem 0.5rem 0.35rem 0;
+  text-align: left;
+  vertical-align: top;
+  border: none;
+}
+
+.home-games__markets-table th {
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.home-games__market-title {
+  font-weight: 500;
+  color: var(--foreground);
+}

@@ -5,29 +5,12 @@ import {
   CalendarLiveMarketColumnKey,
 } from '@typings/calendarLiveExplorerTypes'
 import type { CalendarLiveMarketRow } from '@typings/calendarLiveTypes'
+import { formatCalendarMarketHumanTitle } from '@utils/calendarLiveDisplay'
+import { formatCalendarLiveMarketTableCell } from '@utils/calendarLiveMarketCells'
 import { sortCalendarLiveMarketsByLastPrice } from '@utils/sortCalendarLiveMarketsByLastPrice'
 
 export type CalendarMarketsTableProps = {
   markets: CalendarLiveMarketRow[]
-}
-
-function cell(m: CalendarLiveMarketRow, key: CalendarLiveMarketColumnKey): string {
-  if (key === CalendarLiveMarketColumnKey.Ticker) {
-    return m.ticker != null ? String(m.ticker) : ''
-  }
-  const v = m[key]
-  return v != null ? String(v) : ''
-}
-
-function marketHumanLabel(m: CalendarLiveMarketRow): string | null {
-  const prefer = (v: unknown): string | null => {
-    if (v == null) {
-      return null
-    }
-    const s = String(v).trim()
-    return s.length > 0 ? s : null
-  }
-  return prefer(m.yes_sub_title) ?? prefer(m.title)
 }
 
 function CalendarMarketsTableInner({ markets }: CalendarMarketsTableProps) {
@@ -59,8 +42,11 @@ function CalendarMarketsTableInner({ markets }: CalendarMarketsTableProps) {
         </thead>
         <tbody>
           {sortedMarkets.map((m, i) => {
-            const titleLine = marketHumanLabel(m)
-            const tickerText = cell(m, CalendarLiveMarketColumnKey.Ticker)
+            const titleLine = formatCalendarMarketHumanTitle(m)
+            const tickerText = formatCalendarLiveMarketTableCell(
+              m,
+              CalendarLiveMarketColumnKey.Ticker,
+            )
             return (
               <tr key={m.ticker != null ? String(m.ticker) : `m-${i}`}>
                 {CALENDAR_LIVE_MARKET_TABLE_COLUMNS.map((c) => (
@@ -83,7 +69,7 @@ function CalendarMarketsTableInner({ markets }: CalendarMarketsTableProps) {
                         )}
                       </div>
                     ) : (
-                      cell(m, c.key)
+                      formatCalendarLiveMarketTableCell(m, c.key)
                     )}
                   </td>
                 ))}

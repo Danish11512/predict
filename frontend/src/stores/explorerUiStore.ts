@@ -1,7 +1,5 @@
 import { create } from 'zustand'
 
-import { DEFAULT_EXPLORER_PATH } from '@constants/apiEndpointsConstants'
-
 type ExplorerUiState = {
   /** Last selected explorer path (with leading slash), kept in sync with the router */
   activeExplorerPath: string
@@ -12,7 +10,7 @@ type ExplorerUiState = {
 }
 
 export const useExplorerUiStore = create<ExplorerUiState>((set) => ({
-  activeExplorerPath: DEFAULT_EXPLORER_PATH,
+  activeExplorerPath: '/',
   setActiveExplorerPath: (path) => set({ activeExplorerPath: path }),
   endpointFreshnessEpochMs: {},
   touchEndpointFreshness: (endpointId) =>

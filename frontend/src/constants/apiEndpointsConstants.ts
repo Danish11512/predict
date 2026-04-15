@@ -53,6 +53,13 @@ export const API_EXPLORER_ENDPOINTS: readonly ApiExplorerEndpoint[] = [
   },
 ]
 
+export const KALSHI_CALENDAR_LIVE_SPORTS_ENDPOINT = API_EXPLORER_ENDPOINTS.find(
+  (e) => e.id === ApiExplorerEndpointId.KalshiCalendarLiveSports,
+)!
+
+/** Pathnames (leading slash) where sports calendar LIVE should poll besides its explorer tab. */
+export const CALENDAR_LIVE_SPORTS_POLL_EXTRA_PATHS: readonly string[] = ['/']
+
 const byRouterPath = new Map<string, ApiExplorerEndpoint>()
 for (const e of API_EXPLORER_ENDPOINTS) {
   byRouterPath.set(`/${e.routerPath}`, e)
