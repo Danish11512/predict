@@ -8,6 +8,7 @@ import { Separator } from '@components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@components/ui/sheet'
 import { API_EXPLORER_ENDPOINTS } from '@constants/apiEndpointsConstants'
 import { useExplorerUiStore } from '@stores/explorerUiStore'
+import { useShallow } from 'zustand/react/shallow'
 import '@styles/explorerLayout.css'
 import {
   getExplorerSheetSubtitle,
@@ -18,8 +19,12 @@ import {
 function ExplorerLayoutInner() {
   const location = useLocation()
   const navigate = useNavigate()
-  const activeExplorerPath = useExplorerUiStore((s) => s.activeExplorerPath)
-  const setActiveExplorerPath = useExplorerUiStore((s) => s.setActiveExplorerPath)
+  const { activeExplorerPath, setActiveExplorerPath } = useExplorerUiStore(
+    useShallow((s) => ({
+      activeExplorerPath: s.activeExplorerPath,
+      setActiveExplorerPath: s.setActiveExplorerPath,
+    })),
+  )
 
   useEffect(() => {
     setActiveExplorerPath(normalizeAppPathname(location.pathname))

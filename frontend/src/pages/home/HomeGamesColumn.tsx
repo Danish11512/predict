@@ -18,7 +18,11 @@ import {
 import { formatCalendarLiveMarketTableCell } from '@utils/calendarLiveMarketCells'
 import { sortCalendarLiveMarketsByLastPrice } from '@utils/sortCalendarLiveMarketsByLastPrice'
 
-function HomeMarketRows({ markets }: { markets: readonly CalendarLiveMarketRow[] }) {
+const HomeMarketRows = memo(function HomeMarketRows({
+  markets,
+}: {
+  markets: readonly CalendarLiveMarketRow[]
+}) {
   const top = useMemo(
     () =>
       sortCalendarLiveMarketsByLastPrice(markets).slice(0, CALENDAR_LIVE_HOME_MARKETS_PER_EVENT),
@@ -58,9 +62,9 @@ function HomeMarketRows({ markets }: { markets: readonly CalendarLiveMarketRow[]
       </table>
     </div>
   )
-}
+})
 
-function HomeEventBlock({ row }: { row: CalendarLiveEventRow }) {
+const HomeEventBlock = memo(function HomeEventBlock({ row }: { row: CalendarLiveEventRow }) {
   const heading = formatSportsCalendarEventHeading(row, { omitTickerFallback: true })
   const seriesLine = formatSeriesHumanLine(row)
   const liveTitle = formatOptionalTrimmedLine(row.live_title)
@@ -73,7 +77,7 @@ function HomeEventBlock({ row }: { row: CalendarLiveEventRow }) {
       <HomeMarketRows markets={row.markets ?? []} />
     </article>
   )
-}
+})
 
 function HomeGamesColumnInner() {
   const endpointId = KALSHI_CALENDAR_LIVE_ENDPOINT.id

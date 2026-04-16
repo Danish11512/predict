@@ -29,7 +29,7 @@ function formatJsonIfPossible(text: string): string | null {
   }
 }
 
-function JsonTablePreview({ text }: JsonTablePreviewProps) {
+function JsonTablePreviewInner({ text }: JsonTablePreviewProps) {
   const parsed: unknown = useMemo(() => {
     try {
       return JSON.parse(text) as unknown
@@ -102,6 +102,8 @@ function JsonTablePreview({ text }: JsonTablePreviewProps) {
     </div>
   )
 }
+
+const JsonTablePreview = memo(JsonTablePreviewInner)
 
 function formatCell(value: unknown): string {
   if (value === null || value === undefined) {
