@@ -2,7 +2,7 @@
 
 Fullstack scaffold for integrating with [Kalshi](https://kalshi.com/) using their production REST and WebSocket APIs. The backend holds API credentials and signing keys; the frontend talks to the API only through the Vite dev proxy (`/api` → FastAPI).
 
-**Scope so far:** project layout, env templates, health check, Vite proxy, and **Kalshi-signed** REST helpers plus optional routes (`/kalshi/portfolio/balance`, `/kalshi/markets`, `/kalshi/calendar-live`, `/kalshi/ws/smoke`) when credentials are set. Order placement and streaming UI are not implemented yet.
+**Scope so far:** project layout, env templates, health check, Vite proxy, and **Kalshi-signed** REST helpers plus routes (`/portfolio/balance`, `/markets`, `/calendar-live`, `/ws/smoke`) when credentials are set. Order placement and streaming UI are not implemented yet.
 
 ## Prerequisites
 
@@ -32,6 +32,7 @@ Terminal 1 — API (from repo root):
 cd backend
 cp .env.example .env
 # edit .env with your Kalshi credentials
+uv sync --extra dev   # optional: sqladmin at /crud in dev
 uv run serve
 ```
 

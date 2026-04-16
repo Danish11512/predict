@@ -6,7 +6,6 @@ import { fetchJsonObject } from '@shared/lib/fetchJsonObject'
 import { devLog } from '@shared/lib/devLog'
 import { toProxiedUrl } from '@shared/lib/apiProxy'
 import { useCalendarLiveExplorerStore } from '@stores/calendarLiveExplorerStore'
-import { useExplorerUiStore } from '@stores/explorerUiStore'
 import {
   CalendarLiveExplorerEntryStatus,
   DEFAULT_CALENDAR_LIVE_POLL_ENABLED,
@@ -38,7 +37,6 @@ export function useCalendarLiveExplorerPoll<T extends CalendarLivePayload>(
   }, [location.pathname, endpoint.routerPath, extraPathnames])
 
   const setEntry = useCalendarLiveExplorerStore((s) => s.setCalendarLiveEntry)
-  const touch = useExplorerUiStore((s) => s.touchEndpointFreshness)
   const url = toProxiedUrl(endpoint.proxyPath)
 
   const load = useCallback(async () => {
@@ -60,13 +58,12 @@ export function useCalendarLiveExplorerPoll<T extends CalendarLivePayload>(
       })
       return
     }
-    touch(endpoint.id)
     setEntry(endpoint.id, {
       status: CalendarLiveExplorerEntryStatus.Ok,
       payload: res.data,
       updatedAt: Date.now(),
     })
-  }, [endpoint.id, setEntry, touch, url])
+  }, [endpoint.id, setEntry, url])
 
   useVisibleInterval(load, pollMs, pathOk && extraEnabled)
 }

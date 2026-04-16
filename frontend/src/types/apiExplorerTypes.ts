@@ -12,7 +12,6 @@ export const ApiExplorerEndpointId = {
   KalshiPortfolioBalance: 'kalshi-portfolio-balance',
   KalshiMarkets: 'kalshi-markets',
   KalshiCalendarLive: 'kalshi-calendar-live',
-  KalshiCalendarLiveSports: 'kalshi-calendar-live-sports',
   KalshiWsSmoke: 'kalshi-ws-smoke',
 } as const
 
@@ -24,7 +23,7 @@ export interface ApiExplorerEndpoint {
   label: string
   /** Path segment(s) under layout — joined as `/a/b` */
   routerPath: string
-  /** Backend path after proxy strip (e.g. `/kalshi/markets`) */
+  /** Backend path after proxy strip (e.g. `/markets`) */
   proxyPath: string
   responseKind: ApiExplorerResponseKind
 }

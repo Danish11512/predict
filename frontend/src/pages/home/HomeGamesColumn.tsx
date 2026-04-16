@@ -1,7 +1,7 @@
 import { memo, useMemo } from 'react'
 
 import { Skeleton } from '@components/ui/skeleton'
-import { KALSHI_CALENDAR_LIVE_SPORTS_ENDPOINT } from '@constants/apiEndpointsConstants'
+import { KALSHI_CALENDAR_LIVE_ENDPOINT } from '@constants/apiEndpointsConstants'
 import { useCalendarLiveExplorerStore } from '@stores/calendarLiveExplorerStore'
 import {
   CALENDAR_LIVE_HOME_MARKETS_PER_EVENT,
@@ -76,7 +76,7 @@ function HomeEventBlock({ row }: { row: CalendarLiveEventRow }) {
 }
 
 function HomeGamesColumnInner() {
-  const endpointId = KALSHI_CALENDAR_LIVE_SPORTS_ENDPOINT.id
+  const endpointId = KALSHI_CALENDAR_LIVE_ENDPOINT.id
   const entry = useCalendarLiveExplorerStore((s) => s.entries[endpointId])
 
   if (entry === undefined || entry.status === CalendarLiveExplorerEntryStatus.Loading) {

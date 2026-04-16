@@ -16,14 +16,7 @@ export type SportsCalendarHeadingOptions = {
 
 /** Kalshi short yes-side label, else market title. */
 export function formatCalendarMarketHumanTitle(m: CalendarLiveMarketRow): string | null {
-  const prefer = (v: unknown): string | null => {
-    if (v == null) {
-      return null
-    }
-    const s = String(v).trim()
-    return s.length > 0 ? s : null
-  }
-  return prefer(m.yes_sub_title) ?? prefer(m.title)
+  return formatOptionalTrimmedLine(m.yes_sub_title) ?? formatOptionalTrimmedLine(m.title)
 }
 
 export function formatSeriesHumanLine(row: CalendarLiveEventRow): string | null {

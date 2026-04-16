@@ -4,9 +4,6 @@ import {
   type ApiExplorerEndpoint,
 } from '@typings/apiExplorerTypes'
 
-/** React Router path (no leading slash) — default tab: sports calendar LIVE */
-export const DEFAULT_EXPLORER_PATH = '/kalshi/calendar-live-sports'
-
 /** Ordered nav + fetch registry. Proxy base is `/api` (Vite); paths match FastAPI. */
 export const API_EXPLORER_ENDPOINTS: readonly ApiExplorerEndpoint[] = [
   {
@@ -18,47 +15,40 @@ export const API_EXPLORER_ENDPOINTS: readonly ApiExplorerEndpoint[] = [
   },
   {
     id: ApiExplorerEndpointId.KalshiPortfolioBalance,
-    label: 'GET /kalshi/portfolio/balance',
-    routerPath: 'kalshi/portfolio/balance',
-    proxyPath: '/kalshi/portfolio/balance',
+    label: 'GET /portfolio/balance',
+    routerPath: 'portfolio/balance',
+    proxyPath: '/portfolio/balance',
     responseKind: ApiExplorerResponseKind.Json,
   },
   {
     id: ApiExplorerEndpointId.KalshiMarkets,
-    label: 'GET /kalshi/markets',
-    routerPath: 'kalshi/markets',
-    proxyPath: '/kalshi/markets',
+    label: 'GET /markets',
+    routerPath: 'markets',
+    proxyPath: '/markets',
     responseKind: ApiExplorerResponseKind.Json,
   },
   {
     id: ApiExplorerEndpointId.KalshiCalendarLive,
-    label: 'GET /kalshi/calendar-live',
-    routerPath: 'kalshi/calendar-live',
-    proxyPath: '/kalshi/calendar-live',
-    responseKind: ApiExplorerResponseKind.Json,
-  },
-  {
-    id: ApiExplorerEndpointId.KalshiCalendarLiveSports,
-    label: 'GET /kalshi/calendar-live-sports',
-    routerPath: 'kalshi/calendar-live-sports',
-    proxyPath: '/kalshi/calendar-live-sports',
+    label: 'GET /calendar-live',
+    routerPath: 'calendar-live',
+    proxyPath: '/calendar-live',
     responseKind: ApiExplorerResponseKind.Json,
   },
   {
     id: ApiExplorerEndpointId.KalshiWsSmoke,
-    label: 'GET /kalshi/ws/smoke',
-    routerPath: 'kalshi/ws/smoke',
-    proxyPath: '/kalshi/ws/smoke',
+    label: 'GET /ws/smoke',
+    routerPath: 'ws/smoke',
+    proxyPath: '/ws/smoke',
     responseKind: ApiExplorerResponseKind.Json,
   },
 ]
 
-export const KALSHI_CALENDAR_LIVE_SPORTS_ENDPOINT = API_EXPLORER_ENDPOINTS.find(
-  (e) => e.id === ApiExplorerEndpointId.KalshiCalendarLiveSports,
+export const KALSHI_CALENDAR_LIVE_ENDPOINT = API_EXPLORER_ENDPOINTS.find(
+  (e) => e.id === ApiExplorerEndpointId.KalshiCalendarLive,
 )!
 
-/** Pathnames (leading slash) where sports calendar LIVE should poll besides its explorer tab. */
-export const CALENDAR_LIVE_SPORTS_POLL_EXTRA_PATHS: readonly string[] = ['/']
+/** Pathnames (leading slash) where calendar LIVE should poll besides its explorer tab. */
+export const CALENDAR_LIVE_POLL_EXTRA_PATHS: readonly string[] = ['/']
 
 const byRouterPath = new Map<string, ApiExplorerEndpoint>()
 for (const e of API_EXPLORER_ENDPOINTS) {

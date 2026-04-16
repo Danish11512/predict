@@ -11,6 +11,19 @@ from backend.kalshi.constants import KALSHI_V1_PUBLIC_BASE_URL
 from backend.kalshi.signing import load_private_key_from_pem, path_for_request, sign_request
 from backend.settings import Settings
 
+_trade_client: httpx.AsyncClient | None = None
+_v1_client: httpx.AsyncClient | None = None
+
+
+def set_kalshi_http_clients(
+    trade: httpx.AsyncClient | None,
+    v1: httpx.AsyncClient | None,
+) -> None:
+    """Register pooled clients (FastAPI lifespan); ``None`` clears for tests / scripts."""
+    global _trade_client, _v1_client
+    _trade_client = trade
+    _v1_client = v1
+
 
 def _auth_headers(settings: Settings, method: str, sign_path: str) -> dict[str, str]:
     ts = str(int(time.time() * 1000))
@@ -36,8 +49,11 @@ async def kalshi_get(
         path_only = f"/{path_only}"
     sign_path = path_for_request(base, path_only)
     headers = _auth_headers(settings, "GET", sign_path)
-    async with httpx.AsyncClient(base_url=base, timeout=30.0) as client:
-        return await client.get(path_only, headers=headers, params=params)
+    client = _trade_client
+    if client is None:
+        async with httpx.AsyncClient(base_url=base, timeout=30.0) as ephemeral:
+            return await ephemeral.get(path_only, headers=headers, params=params)
+    return await client.get(path_only, headers=headers, params=params)
 
 
 async def kalshi_v1_get(
@@ -46,9 +62,12 @@ async def kalshi_v1_get(
     params: dict[str, Any] | None = None,
 ) -> httpx.Response:
     """Unauthenticated GET to the Kalshi v1 public API (card_feed, live_data, filters)."""
-    base = KALSHI_V1_PUBLIC_BASE_URL
+    base = KALSHI_V1_PUBLIC_BASE_URL.rstrip("/")
     path_only = path.split("?", 1)[0]
     if not path_only.startswith("/"):
         path_only = f"/{path_only}"
-    async with httpx.AsyncClient(base_url=base, timeout=30.0) as client:
-        return await client.get(path_only, params=params)
+    client = _v1_client
+    if client is None:
+        async with httpx.AsyncClient(base_url=base, timeout=30.0) as ephemeral:
+            return await ephemeral.get(path_only, params=params)
+    return await client.get(path_only, params=params)

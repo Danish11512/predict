@@ -5,7 +5,7 @@ import '@styles/httpRequestSpecSection.css'
 
 export type HttpRequestSpecSectionProps = {
   method: string
-  /** Logical API path as documented, e.g. `/kalshi/calendar-live` */
+  /** Logical API path as documented, e.g. `/calendar-live` */
   apiPath: string
   /** Full URL used by fetch (includes `/api` proxy prefix). */
   fetchUrl: string

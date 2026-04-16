@@ -6,7 +6,7 @@ export function normalizeAppPathname(pathname: string): string {
   return n === '' ? '/' : n
 }
 
-/** Active path matches `href` (e.g. `/health` or `/kalshi/...`), including trailing-slash variants. */
+/** Active path matches `href` (e.g. `/health` or `/markets`), including trailing-slash variants. */
 export function isExplorerSheetRouteActive(activePath: string, href: string): boolean {
   const a = normalizeAppPathname(activePath)
   const b = normalizeAppPathname(href)

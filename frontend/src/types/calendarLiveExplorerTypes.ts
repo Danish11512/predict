@@ -10,7 +10,7 @@ export const CalendarLiveExplorerEntryStatus = {
 export type CalendarLiveExplorerEntryStatus =
   (typeof CalendarLiveExplorerEntryStatus)[keyof typeof CalendarLiveExplorerEntryStatus]
 
-/** Cached GET /kalshi/calendar-live* response for explorer UI (session-only). */
+/** Cached GET /calendar-live response for explorer UI (session-only). */
 export type CalendarLiveExplorerEntry =
   | { status: typeof CalendarLiveExplorerEntryStatus.Loading }
   | { status: typeof CalendarLiveExplorerEntryStatus.Error; message: string }
