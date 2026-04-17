@@ -13,7 +13,7 @@ import {
   formatCalendarMarketHumanTitle,
   formatOptionalTrimmedLine,
   formatSeriesHumanLine,
-  formatSportsCalendarEventHeading,
+  getSportsCalendarEventHeadingParts,
 } from '@utils/calendarLiveDisplay'
 import { formatCalendarLiveMarketTableCell } from '@utils/calendarLiveMarketCells'
 import { sortCalendarLiveMarketsByLastPrice } from '@utils/sortCalendarLiveMarketsByLastPrice'
@@ -65,13 +65,33 @@ const HomeMarketRows = memo(function HomeMarketRows({
 })
 
 const HomeEventBlock = memo(function HomeEventBlock({ row }: { row: CalendarLiveEventRow }) {
-  const heading = formatSportsCalendarEventHeading(row, { omitTickerFallback: true })
+  const { title: eventTitle, statusTokens } = getSportsCalendarEventHeadingParts(row, {
+    omitTickerFallback: true,
+  })
+  const extraStatusTokens = statusTokens.filter((t) => t !== 'LIVE')
+  const showStatusLine = statusTokens.length > 0
   const seriesLine = formatSeriesHumanLine(row)
   const liveTitle = formatOptionalTrimmedLine(row.live_title)
 
   return (
     <article className="home-games__article">
-      <h2 className="home-games__title">{heading}</h2>
+      <h2 className="home-games__title">{eventTitle}</h2>
+      {showStatusLine ? (
+        <p className="home-games__status-line">
+          {row.is_live ? (
+            <span className="home-games__live-indicator">
+              <span className="home-games__live-dot" aria-hidden />
+              <span className="home-games__live-label">LIVE</span>
+            </span>
+          ) : null}
+          {extraStatusTokens.length > 0 ? (
+            <span className="home-games__status-extra">
+              {row.is_live ? <span aria-hidden> · </span> : null}
+              {extraStatusTokens.join(' · ')}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
       {liveTitle ? <p className="home-games__live-title">{liveTitle}</p> : null}
       {seriesLine ? <p className="home-games__meta">{seriesLine}</p> : null}
       <HomeMarketRows markets={row.markets ?? []} />

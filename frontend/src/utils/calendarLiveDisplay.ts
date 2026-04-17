@@ -36,27 +36,46 @@ export function formatSeriesHumanLine(row: CalendarLiveEventRow): string | null 
   return parts.length > 0 ? parts.join(' · ') : null
 }
 
+export type SportsCalendarEventHeadingParts = {
+  /** Plain event title (no bracketed status suffix). */
+  title: string
+  /** Status tokens in display order, e.g. `LIVE`, widget/game labels. */
+  statusTokens: string[]
+}
+
+/**
+ * Base title string plus status tokens used for LIVE / widget / game display.
+ * Does not include bracket formatting — use {@link formatSportsCalendarEventHeading} for the legacy string.
+ */
+export function getSportsCalendarEventHeadingParts(
+  row: CalendarLiveEventRow,
+  options?: SportsCalendarHeadingOptions,
+): SportsCalendarEventHeadingParts {
+  const omitTicker = options?.omitTickerFallback === true
+  const rawTitle = row.title != null ? String(row.title).trim() : ''
+  const title =
+    rawTitle.length > 0 ? rawTitle : omitTicker ? 'Live event' : String(row.event_ticker ?? '')
+
+  const statusTokens: string[] = []
+  if (row.is_live) {
+    statusTokens.push('LIVE')
+  }
+  if (row.widget_status && row.widget_status !== 'live') {
+    statusTokens.push(String(row.widget_status))
+  }
+  if (row.game_status) {
+    statusTokens.push(String(row.game_status))
+  }
+  return { title, statusTokens }
+}
+
 export function formatSportsCalendarEventHeading(
   row: CalendarLiveEventRow,
   options?: SportsCalendarHeadingOptions,
 ): string {
-  const omitTicker = options?.omitTickerFallback === true
-  const rawTitle = row.title != null ? String(row.title).trim() : ''
-  const heading =
-    rawTitle.length > 0 ? rawTitle : omitTicker ? 'Live event' : String(row.event_ticker ?? '')
-
-  const badges: string[] = []
-  if (row.is_live) {
-    badges.push('LIVE')
+  const { title, statusTokens } = getSportsCalendarEventHeadingParts(row, options)
+  if (statusTokens.length === 0) {
+    return title
   }
-  if (row.widget_status && row.widget_status !== 'live') {
-    badges.push(String(row.widget_status))
-  }
-  if (row.game_status) {
-    badges.push(String(row.game_status))
-  }
-  if (badges.length === 0) {
-    return heading
-  }
-  return `${heading} [${badges.join(' · ')}]`
+  return `${title} [${statusTokens.join(' · ')}]`
 }
