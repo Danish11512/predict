@@ -1,4 +1,4 @@
-/** Shapes returned by GET /kalshi/calendar-live and GET /kalshi/calendar-live-sports (subset for UI). */
+/** Shapes returned by GET /calendar-live (subset for UI). */
 
 export type CalendarLiveMarketRow = {
   ticker?: string

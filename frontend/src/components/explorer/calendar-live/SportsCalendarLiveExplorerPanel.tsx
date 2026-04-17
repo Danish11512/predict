@@ -15,6 +15,10 @@ import type { ApiExplorerEndpoint } from '@typings/apiExplorerTypes'
 import { CalendarEventArticle } from './CalendarEventArticle'
 import './calendarLiveExplorer.css'
 
+const SPORTS_CALENDAR_REQUEST_HEADERS: Record<string, string> = {
+  Accept: 'application/json',
+}
+
 function SportsCalendarLiveExplorerPanelInner({ endpoint }: { endpoint: ApiExplorerEndpoint }) {
   const url = toProxiedUrl(endpoint.proxyPath)
   const entry = useCalendarLiveExplorerStore((s) => s.entries[endpoint.id])
@@ -45,7 +49,7 @@ function SportsCalendarLiveExplorerPanelInner({ endpoint }: { endpoint: ApiExplo
         apiPath={endpoint.proxyPath}
         fetchUrl={url}
         queryParams={undefined}
-        requestHeaders={{ Accept: 'application/json' }}
+        requestHeaders={SPORTS_CALENDAR_REQUEST_HEADERS}
       />
       <Separator className="my-4" />
       {entry === undefined || entry.status === CalendarLiveExplorerEntryStatus.Loading ? (
@@ -66,7 +70,11 @@ function SportsCalendarLiveExplorerPanelInner({ endpoint }: { endpoint: ApiExplo
   )
 }
 
-function SportsCalendarLiveOkBody({ payload }: { payload: SportsCalendarLivePayload }) {
+const SportsCalendarLiveOkBody = memo(function SportsCalendarLiveOkBody({
+  payload,
+}: {
+  payload: SportsCalendarLivePayload
+}) {
   return (
     <div>
       <h3 className="calendar-live-explorer__col-title">Formatted</h3>
@@ -100,6 +108,6 @@ function SportsCalendarLiveOkBody({ payload }: { payload: SportsCalendarLivePayl
       ))}
     </div>
   )
-}
+})
 
 export const SportsCalendarLiveExplorerPanel = memo(SportsCalendarLiveExplorerPanelInner)

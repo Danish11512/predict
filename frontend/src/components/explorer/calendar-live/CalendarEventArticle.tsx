@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react'
 
 import { devLog } from '@shared/lib/devLog'
 import type { CalendarLiveEventRow } from '@typings/calendarLiveTypes'
+import { formatSeriesHumanLine, formatSportsCalendarEventHeading } from '@utils/calendarLiveDisplay'
 
 import { CalendarMarketsTable } from './CalendarMarketsTable'
 
@@ -10,27 +11,9 @@ export type CalendarEventArticleProps = {
   isSportsCalendar: boolean
 }
 
-function buildSportsTitle(row: CalendarLiveEventRow): string {
-  const heading = String(row.title ?? row.event_ticker ?? '')
-  const badges: string[] = []
-  if (row.is_live) {
-    badges.push('LIVE')
-  }
-  if (row.widget_status && row.widget_status !== 'live') {
-    badges.push(String(row.widget_status))
-  }
-  if (row.game_status) {
-    badges.push(String(row.game_status))
-  }
-  if (badges.length === 0) {
-    return heading
-  }
-  return `${heading} [${badges.join(' · ')}]`
-}
-
 function CalendarEventArticleInner({ row, isSportsCalendar }: CalendarEventArticleProps) {
   const title = isSportsCalendar
-    ? buildSportsTitle(row)
+    ? formatSportsCalendarEventHeading(row)
     : String(row.title ?? row.event_ticker ?? '')
 
   const eventTickerDescription = useMemo(() => {
@@ -41,22 +24,7 @@ function CalendarEventArticleInner({ row, isSportsCalendar }: CalendarEventArtic
     return s.length > 0 ? s : null
   }, [row.title])
 
-  const seriesHumanLabel = useMemo(() => {
-    const parts: string[] = []
-    if (row.series_title != null) {
-      const s = String(row.series_title).trim()
-      if (s.length > 0) {
-        parts.push(s)
-      }
-    }
-    if (row.series_category != null) {
-      const s = String(row.series_category).trim()
-      if (s.length > 0) {
-        parts.push(s)
-      }
-    }
-    return parts.length > 0 ? parts.join(' · ') : null
-  }, [row.series_category, row.series_title])
+  const seriesHumanLabel = useMemo(() => formatSeriesHumanLine(row), [row])
 
   const rawJson = useMemo(() => {
     try {

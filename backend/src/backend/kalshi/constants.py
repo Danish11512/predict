@@ -13,16 +13,9 @@ KALSHI_V1_PUBLIC_BASE_URL = "https://api.elections.kalshi.com/v1"
 
 DEFAULT_CALENDAR_LIVE_MAX_EVENTS = 10
 
-# How payloads relate to https://kalshi.com/calendar (Sports LIVE strip).
-KALSHI_CAL_META_GENERAL: dict[str, Any] = {
-    "matches_kalshi_com_calendar_sports_strip": False,
-    "pipeline": "milestone_scored_open_multivariate",
-    "for_website_sports_live_strip_use": "GET /kalshi/calendar-live-sports",
-    "note": (
-        "Ranked by milestone windows plus open/multivariate heuristics — not the ordered Sports card_feed "
-        "used on kalshi.com/calendar."
-    ),
-}
+# Browser→backend poll dedupe: full sports payload refresh at most this often.
+CALENDAR_LIVE_SPORTS_HTTP_CACHE_TTL_SEC = 5.0
+
 KALSHI_CAL_META_SPORTS_CARD_FEED: dict[str, Any] = {
     "matches_kalshi_com_calendar_sports_strip": True,
     "pipeline": "live_data_card_feed_category_sports",
@@ -34,9 +27,9 @@ KALSHI_CAL_META_SPORTS_CARD_FEED: dict[str, Any] = {
 KALSHI_CAL_META_SPORTS_AGGREGATION: dict[str, Any] = {
     "matches_kalshi_com_calendar_sports_strip": False,
     "pipeline": "milestone_scored_aggregation_sports_filter",
-    "for_website_sports_live_strip_use": "GET /kalshi/calendar-live-sports (retry for card_feed)",
+    "for_website_sports_live_strip_use": "GET /calendar-live (retry for card_feed)",
     "note": (
-        "card_feed failed; sports rows come from milestone aggregation — compare parity.* to calendar-live top N, "
+        "card_feed failed; sports rows come from milestone aggregation — compare parity.* to aggregation top N, "
         "not the website ordering."
     ),
 }
@@ -56,7 +49,7 @@ MILESTONE_TICKER_FALLBACK_SAMPLE = 40
 # card_feed pagination (max outer iterations)
 CARD_FEED_MAX_PAGES = 3
 
-# Sports-only aggregation pool sizing in finalize_calendar_live_payload (sports_only=True)
+# Sports-only aggregation pool sizing in finalize_sports_calendar_from_aggregation
 SPORTS_AGGREGATION_POOL_MIN_ROWS = 80
 SPORTS_AGGREGATION_POOL_ME_MULTIPLIER = 40
 SPORTS_AGGREGATION_POOL_MAX_TICKERS = 400

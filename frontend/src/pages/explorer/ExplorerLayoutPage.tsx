@@ -8,17 +8,26 @@ import { Separator } from '@components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@components/ui/sheet'
 import { API_EXPLORER_ENDPOINTS } from '@constants/apiEndpointsConstants'
 import { useExplorerUiStore } from '@stores/explorerUiStore'
+import { useShallow } from 'zustand/react/shallow'
 import '@styles/explorerLayout.css'
+import {
+  getExplorerSheetSubtitle,
+  isExplorerSheetRouteActive,
+  normalizeAppPathname,
+} from '@utils/explorerNavPathUtils'
 
 function ExplorerLayoutInner() {
   const location = useLocation()
   const navigate = useNavigate()
-  const activeExplorerPath = useExplorerUiStore((s) => s.activeExplorerPath)
-  const setActiveExplorerPath = useExplorerUiStore((s) => s.setActiveExplorerPath)
+  const { activeExplorerPath, setActiveExplorerPath } = useExplorerUiStore(
+    useShallow((s) => ({
+      activeExplorerPath: s.activeExplorerPath,
+      setActiveExplorerPath: s.setActiveExplorerPath,
+    })),
+  )
 
   useEffect(() => {
-    const path = location.pathname.replace(/\/+$/, '') || '/'
-    setActiveExplorerPath(path)
+    setActiveExplorerPath(normalizeAppPathname(location.pathname))
   }, [location.pathname, setActiveExplorerPath])
 
   const onSelectPath = useCallback(
@@ -44,9 +53,20 @@ function ExplorerLayoutInner() {
             </SheetHeader>
             <ScrollArea className="h-[calc(100vh-4rem)]">
               <nav className="flex flex-col gap-0.5 p-2" aria-label="API endpoints">
+                <button
+                  type="button"
+                  className={
+                    isExplorerSheetRouteActive(activeExplorerPath, '/')
+                      ? 'explorer-shell__nav-item explorer-shell__nav-item--active'
+                      : 'explorer-shell__nav-item'
+                  }
+                  onClick={() => onSelectPath('/')}
+                >
+                  Home
+                </button>
                 {API_EXPLORER_ENDPOINTS.map((ep) => {
                   const href = `/${ep.routerPath}`
-                  const isActive = activeExplorerPath === href || activeExplorerPath === `${href}/`
+                  const isActive = isExplorerSheetRouteActive(activeExplorerPath, href)
                   return (
                     <button
                       key={ep.id}
@@ -68,13 +88,7 @@ function ExplorerLayoutInner() {
         </Sheet>
         <div className="explorer-shell__title-block">
           <h1 className="explorer-shell__title">Predict API explorer</h1>
-          <p className="explorer-shell__subtitle">
-            {API_EXPLORER_ENDPOINTS.find(
-              (e) =>
-                activeExplorerPath === `/${e.routerPath}` ||
-                activeExplorerPath === `/${e.routerPath}/`,
-            )?.label ?? activeExplorerPath}
-          </p>
+          <p className="explorer-shell__subtitle">{getExplorerSheetSubtitle(activeExplorerPath)}</p>
         </div>
       </header>
       <Separator />

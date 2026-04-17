@@ -2,7 +2,6 @@ import { memo, useEffect, useMemo, useState } from 'react'
 
 import { Badge } from '@components/ui/badge'
 import { DataUpdatedAgo } from '@components/explorer/DataUpdatedAgo'
-import { CalendarLiveExplorerPanel } from '@components/explorer/calendar-live/CalendarLiveExplorerPanel'
 import { SportsCalendarLiveExplorerPanel } from '@components/explorer/calendar-live/SportsCalendarLiveExplorerPanel'
 import { ScrollArea } from '@components/ui/scrollArea'
 import { Separator } from '@components/ui/separator'
@@ -30,7 +29,7 @@ function formatJsonIfPossible(text: string): string | null {
   }
 }
 
-function JsonTablePreview({ text }: JsonTablePreviewProps) {
+function JsonTablePreviewInner({ text }: JsonTablePreviewProps) {
   const parsed: unknown = useMemo(() => {
     try {
       return JSON.parse(text) as unknown
@@ -103,6 +102,8 @@ function JsonTablePreview({ text }: JsonTablePreviewProps) {
     </div>
   )
 }
+
+const JsonTablePreview = memo(JsonTablePreviewInner)
 
 function formatCell(value: unknown): string {
   if (value === null || value === undefined) {
@@ -225,9 +226,6 @@ function GenericEndpointResponsePanel({ endpoint }: EndpointResponsePanelProps) 
 
 function EndpointResponsePanelSwitch({ endpoint }: EndpointResponsePanelProps) {
   if (endpoint.id === ApiExplorerEndpointId.KalshiCalendarLive) {
-    return <CalendarLiveExplorerPanel endpoint={endpoint} />
-  }
-  if (endpoint.id === ApiExplorerEndpointId.KalshiCalendarLiveSports) {
     return <SportsCalendarLiveExplorerPanel endpoint={endpoint} />
   }
   return <GenericEndpointResponsePanel endpoint={endpoint} />

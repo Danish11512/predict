@@ -10,7 +10,7 @@ export const CalendarLiveExplorerEntryStatus = {
 export type CalendarLiveExplorerEntryStatus =
   (typeof CalendarLiveExplorerEntryStatus)[keyof typeof CalendarLiveExplorerEntryStatus]
 
-/** Cached GET /kalshi/calendar-live* response for explorer UI (session-only). */
+/** Cached GET /calendar-live response for explorer UI (session-only). */
 export type CalendarLiveExplorerEntry =
   | { status: typeof CalendarLiveExplorerEntryStatus.Loading }
   | { status: typeof CalendarLiveExplorerEntryStatus.Error; message: string }
@@ -47,10 +47,19 @@ export const CALENDAR_LIVE_MARKET_TABLE_COLUMNS: readonly CalendarLiveMarketColu
   { key: CalendarLiveMarketColumnKey.VolumeFp, label: 'Vol' },
 ]
 
+/** Data columns only (no ticker); for home and other human-first tables. */
+export const CALENDAR_LIVE_MARKET_DATA_COLUMNS: readonly CalendarLiveMarketColumnDef[] =
+  CALENDAR_LIVE_MARKET_TABLE_COLUMNS.filter((c) => c.key !== CalendarLiveMarketColumnKey.Ticker)
+
+/** Max markets shown per event on the home LIVE column. */
+export const CALENDAR_LIVE_HOME_MARKETS_PER_EVENT = 3
+
 export interface CalendarLiveExplorerPollOptions {
   pollMs?: number
   /** When false, polling is suspended (e.g. route not active). */
   enabled?: boolean
+  /** Extra pathnames (leading slash, no trailing slash) where this endpoint should poll. */
+  extraPathnames?: readonly string[]
 }
 
 /** Default: polling is on whenever the hook is mounted with a matching route. */

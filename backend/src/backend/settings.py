@@ -59,7 +59,7 @@ class Settings(BaseSettings):
         ge=1,
         le=200,
         validation_alias="KALSHI_CALENDAR_LIVE_MAX_EVENTS",
-        description="Max events returned by /kalshi/calendar-live and /kalshi/calendar-live-sports.",
+        description="Max events returned by GET /calendar-live.",
     )
     kalshi_sports_live_tz: str = Field(
         default="America/New_York",

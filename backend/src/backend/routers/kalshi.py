@@ -8,12 +8,12 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.kalshi.calendar_live import build_calendar_live_payload, build_sports_calendar_live_payload
+from backend.kalshi.calendar_live import build_sports_calendar_live_payload
 from backend.kalshi.http_client import kalshi_get
 from backend.kalshi.ws import kalshi_ws_smoke_test
 from backend.settings import Settings, get_settings
 
-router = APIRouter(prefix="/kalshi", tags=["kalshi"])
+router = APIRouter(tags=["kalshi"])
 _log = logging.getLogger(__name__)
 
 
@@ -80,34 +80,15 @@ async def markets(
 async def calendar_live(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    """Open + multivariate events (nested markets), milestone-scored LIVE heuristics — not the kalshi.com Sports strip.
-
-    See response ``kalshi_calendar``; for website Sports LIVE alignment use ``/kalshi/calendar-live-sports``.
-    """
+    """Sports LIVE calendar — ``card_feed`` (kalshi.com/calendar) with aggregation fallback."""
     _require_kalshi_credentials(settings)
     try:
-        return await build_calendar_live_payload(settings)
+        return await build_sports_calendar_live_payload(settings)
     except httpx.HTTPStatusError as e:
         _log.warning("calendar-live HTTP error", exc_info=True)
         raise _http_error(e) from e
     except httpx.RequestError as e:
         _log.warning("calendar-live request failed: %s", e, exc_info=True)
-        raise HTTPException(status_code=502, detail=str(e)) from e
-
-
-@router.get("/calendar-live-sports")
-async def calendar_live_sports(
-    settings: Settings = Depends(get_settings),
-) -> dict[str, Any]:
-    """Sports LIVE list — prefers ``card_feed`` (kalshi.com/calendar); fallback aggregation includes parity vs calendar-live."""
-    _require_kalshi_credentials(settings)
-    try:
-        return await build_sports_calendar_live_payload(settings)
-    except httpx.HTTPStatusError as e:
-        _log.warning("calendar-live-sports HTTP error", exc_info=True)
-        raise _http_error(e) from e
-    except httpx.RequestError as e:
-        _log.warning("calendar-live-sports request failed: %s", e, exc_info=True)
         raise HTTPException(status_code=502, detail=str(e)) from e
 
 

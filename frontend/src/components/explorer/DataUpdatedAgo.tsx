@@ -1,4 +1,4 @@
-import { useMemo, useSyncExternalStore } from 'react'
+import { memo, useMemo, useSyncExternalStore } from 'react'
 
 import {
   getWallClockMsServerSnapshot,
@@ -14,7 +14,7 @@ type DataUpdatedAgoProps = {
 /**
  * Shows “Updated Ns ago”, ticking once per second via a shared wall-clock subscription.
  */
-export function DataUpdatedAgo({ updatedAt }: DataUpdatedAgoProps) {
+function DataUpdatedAgoInner({ updatedAt }: DataUpdatedAgoProps) {
   const nowMs = useSyncExternalStore(
     subscribeWallClockMs,
     getWallClockMsSnapshot,
@@ -50,3 +50,5 @@ export function DataUpdatedAgo({ updatedAt }: DataUpdatedAgoProps) {
     </span>
   )
 }
+
+export const DataUpdatedAgo = memo(DataUpdatedAgoInner)
