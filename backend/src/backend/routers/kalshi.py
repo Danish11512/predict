@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
@@ -73,6 +74,111 @@ async def markets(
         raise _http_error(e) from e
     except httpx.RequestError as e:
         _log.warning("Kalshi markets request failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=502, detail=str(e)) from e
+
+
+@router.get("/portfolio/settlements")
+async def portfolio_settlements(
+    settings: Settings = Depends(get_settings),
+    limit: int | None = None,
+    cursor: str | None = None,
+    ticker: str | None = None,
+    event_ticker: str | None = None,
+    min_ts: int | None = None,
+    max_ts: int | None = None,
+    subaccount: int | None = None,
+) -> dict[str, Any]:
+    """Signed GET to Kalshi ``/portfolio/settlements``."""
+    _require_kalshi_credentials(settings)
+    params: dict[str, Any] = {}
+    if limit is not None:
+        params["limit"] = limit
+    if cursor is not None:
+        params["cursor"] = cursor
+    if ticker is not None:
+        params["ticker"] = ticker
+    if event_ticker is not None:
+        params["event_ticker"] = event_ticker
+    if min_ts is not None:
+        params["min_ts"] = min_ts
+    if max_ts is not None:
+        params["max_ts"] = max_ts
+    if subaccount is not None:
+        params["subaccount"] = subaccount
+    try:
+        r = await kalshi_get(settings, "/portfolio/settlements", params=params or None)
+        r.raise_for_status()
+        return r.json()
+    except httpx.HTTPStatusError as e:
+        _log.warning("Kalshi portfolio_settlements HTTP error", exc_info=True)
+        raise _http_error(e) from e
+    except httpx.RequestError as e:
+        _log.warning("Kalshi portfolio_settlements request failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=502, detail=str(e)) from e
+
+
+@router.get("/portfolio/fills")
+async def portfolio_fills(
+    settings: Settings = Depends(get_settings),
+    limit: int | None = None,
+    cursor: str | None = None,
+    ticker: str | None = None,
+    order_id: str | None = None,
+    min_ts: int | None = None,
+    max_ts: int | None = None,
+    subaccount: int | None = None,
+) -> dict[str, Any]:
+    """Signed GET to Kalshi ``/portfolio/fills``."""
+    _require_kalshi_credentials(settings)
+    params: dict[str, Any] = {}
+    if limit is not None:
+        params["limit"] = limit
+    if cursor is not None:
+        params["cursor"] = cursor
+    if ticker is not None:
+        params["ticker"] = ticker
+    if order_id is not None:
+        params["order_id"] = order_id
+    if min_ts is not None:
+        params["min_ts"] = min_ts
+    if max_ts is not None:
+        params["max_ts"] = max_ts
+    if subaccount is not None:
+        params["subaccount"] = subaccount
+    try:
+        r = await kalshi_get(settings, "/portfolio/fills", params=params or None)
+        r.raise_for_status()
+        return r.json()
+    except httpx.HTTPStatusError as e:
+        _log.warning("Kalshi portfolio_fills HTTP error", exc_info=True)
+        raise _http_error(e) from e
+    except httpx.RequestError as e:
+        _log.warning("Kalshi portfolio_fills request failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=502, detail=str(e)) from e
+
+
+@router.get("/events/{event_ticker}")
+async def event_by_ticker(
+    event_ticker: str,
+    settings: Settings = Depends(get_settings),
+    with_nested_markets: bool | None = None,
+) -> dict[str, Any]:
+    """Signed GET to Kalshi ``/events/{event_ticker}``."""
+    _require_kalshi_credentials(settings)
+    enc = quote(event_ticker, safe="-_.~")
+    path = f"/events/{enc}"
+    params: dict[str, Any] = {}
+    if with_nested_markets is not None:
+        params["with_nested_markets"] = with_nested_markets
+    try:
+        r = await kalshi_get(settings, path, params=params or None)
+        r.raise_for_status()
+        return r.json()
+    except httpx.HTTPStatusError as e:
+        _log.warning("Kalshi event_by_ticker HTTP error", exc_info=True)
+        raise _http_error(e) from e
+    except httpx.RequestError as e:
+        _log.warning("Kalshi event_by_ticker request failed: %s", e, exc_info=True)
         raise HTTPException(status_code=502, detail=str(e)) from e
 
 

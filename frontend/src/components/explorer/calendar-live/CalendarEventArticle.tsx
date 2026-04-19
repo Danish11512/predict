@@ -4,6 +4,7 @@ import { devLog } from '@shared/lib/devLog'
 import type { CalendarLiveEventRow } from '@typings/calendarLiveTypes'
 import { formatSeriesHumanLine, formatSportsCalendarEventHeading } from '@utils/calendarLiveDisplay'
 
+import { GameProgressSection } from './GameProgressSection'
 import { CalendarMarketsTable } from './CalendarMarketsTable'
 
 export type CalendarEventArticleProps = {
@@ -44,6 +45,12 @@ function CalendarEventArticleInner({ row, isSportsCalendar }: CalendarEventArtic
     <article className="calendar-live-explorer__article">
       <h2 className="calendar-live-explorer__article-title">{title}</h2>
       {liveTitle ? <div className="calendar-live-explorer__live-title">{liveTitle}</div> : null}
+      {isSportsCalendar && row.game_progress ? (
+        <GameProgressSection
+          gameProgress={row.game_progress}
+          classPrefix="calendar-live-explorer"
+        />
+      ) : null}
       <div className="calendar-live-explorer__meta">
         <div className="calendar-live-explorer__meta-row">
           <span className="calendar-live-explorer__meta-k">Event</span>

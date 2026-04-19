@@ -12,6 +12,7 @@ from urllib.parse import quote
 
 import httpx
 
+from backend.kalshi.game_progress import game_progress_from_live_data
 from backend.kalshi.constants import (
     CALENDAR_LIVE_SPORTS_HTTP_CACHE_TTL_SEC,
     CARD_FEED_MAX_PAGES,
@@ -75,6 +76,7 @@ class CalendarLiveAggregated(NamedTuple):
     by_ticker: dict[str, dict[str, Any]]
     sources: dict[str, str]
     scored: list[tuple[float, float, str]]
+    ticker_to_milestone_id: dict[str, str]
 
 
 class MilestoneTickerIndex(NamedTuple):
@@ -120,6 +122,52 @@ def build_milestone_ticker_index(milestones: list[dict[str, Any]]) -> MilestoneT
         frozenset(primary_live),
         frozenset(related_live),
     )
+
+
+def _ticker_to_milestone_id_from_list(milestones_list: list[dict[str, Any]]) -> dict[str, str]:
+    """Map event ticker -> milestone UUID from ``GET /milestones`` rows (for ``live_data/batch``)."""
+    out: dict[str, str] = {}
+    for m in milestones_list:
+        if not isinstance(m, dict):
+            continue
+        mid = m.get("id")
+        if not isinstance(mid, str) or not mid.strip():
+            raw_mid = m.get("milestone_id")
+            mid = raw_mid if isinstance(raw_mid, str) and raw_mid.strip() else ""
+        if not mid:
+            continue
+        for key in ("primary_event_tickers", "related_event_tickers"):
+            raw = m.get(key)
+            if isinstance(raw, list):
+                for t in raw:
+                    if isinstance(t, str) and t:
+                        out.setdefault(t, mid)
+    return out
+
+
+def _attach_game_progress_to_events(
+    rows: list[dict[str, Any]],
+    ticker_to_milestone: dict[str, str],
+    live_data_by_milestone: dict[str, Any],
+) -> None:
+    """Set ``game_progress`` on each row (``None`` when not Kalshi in-play or missing live data)."""
+    now = datetime.now(timezone.utc)
+    for row in rows:
+        et = row.get("event_ticker")
+        st = row.get("series_ticker")
+        if not isinstance(et, str) or not isinstance(st, str):
+            row["game_progress"] = None
+            continue
+        mid = ticker_to_milestone.get(et)
+        if not mid:
+            row["game_progress"] = None
+            continue
+        ld = live_data_by_milestone.get(mid)
+        row["game_progress"] = game_progress_from_live_data(
+            ld if isinstance(ld, dict) else None,
+            series_ticker=st,
+            now=now,
+        )
 
 
 def _slug_from_metadata(meta: object) -> str | None:
@@ -423,7 +471,17 @@ async def aggregate_calendar_live_candidates(settings: Settings) -> CalendarLive
         lu_ts = lu.timestamp() if lu else 0.0
         scored.append((sc, lu_ts, et))
     scored.sort(key=lambda x: (-x[0], -x[1], x[2]))
-    return CalendarLiveAggregated(ms=ms, mv_ids=mv_ids, by_ticker=by_ticker, sources=sources, scored=scored)
+    ticker_to_milestone_id = _ticker_to_milestone_id_from_list(
+        [x for x in milestones_list if isinstance(x, dict)],
+    )
+    return CalendarLiveAggregated(
+        ms=ms,
+        mv_ids=mv_ids,
+        by_ticker=by_ticker,
+        sources=sources,
+        scored=scored,
+        ticker_to_milestone_id=ticker_to_milestone_id,
+    )
 
 
 def _calendar_live_max_events(settings: Settings) -> int:
@@ -537,6 +595,17 @@ async def finalize_sports_calendar_from_aggregation(
 
     sports_set = set(sports_selected)
     out_events = _shape_out_events(agg, sports_selected, series_cache)
+
+    milestone_ids = sorted(
+        {agg.ticker_to_milestone_id[et] for et in sports_selected if et in agg.ticker_to_milestone_id}
+    )
+    live_data_agg: dict[str, Any] = {}
+    if milestone_ids:
+        try:
+            live_data_agg = await _fetch_live_data_batch(milestone_ids)
+        except Exception:
+            _log.warning("live_data/batch failed in aggregation calendar path", exc_info=True)
+    _attach_game_progress_to_events(out_events, agg.ticker_to_milestone_id, live_data_agg)
 
     parity = {
         "calendar_live_top_tickers": calendar_top,
@@ -740,6 +809,8 @@ async def _build_sports_from_card_feed(settings: Settings, max_events: int) -> d
             "markets": [m for m in markets if isinstance(m, dict)],
         }
         out_events.append(row)
+
+    _attach_game_progress_to_events(out_events, ticker_to_milestone, live_data)
 
     return {
         "max_events": max_events,

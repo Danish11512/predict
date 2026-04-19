@@ -29,6 +29,132 @@ function formatJsonIfPossible(text: string): string | null {
   }
 }
 
+function formatCell(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '—'
+  }
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value)
+    } catch (e) {
+      devLog.warn('table cell stringify failed', { cause: e })
+      return String(value)
+    }
+  }
+  return String(value)
+}
+
+const PORTFOLIO_TABLE_MAX = 100
+const PORTFOLIO_KEYS_SCAN = 80
+
+function collectKeysFromObjectRows(rows: unknown[], scanLimit: number): string[] {
+  const keySet = new Set<string>()
+  const n = Math.min(rows.length, scanLimit)
+  for (let i = 0; i < n; i++) {
+    const row = rows[i]
+    if (row !== null && typeof row === 'object' && !Array.isArray(row)) {
+      for (const k of Object.keys(row as Record<string, unknown>)) {
+        keySet.add(k)
+      }
+    }
+  }
+  return [...keySet].sort((a, b) => a.localeCompare(b))
+}
+
+const PortfolioPagedObjectsTableInner = memo(function PortfolioPagedObjectsTableInner({
+  record,
+  rowsKey,
+}: {
+  record: Record<string, unknown>
+  rowsKey: 'settlements' | 'fills'
+}) {
+  const rowsUnknown = record[rowsKey]
+  const cursorRaw = record.cursor
+
+  const cursorText =
+    cursorRaw !== undefined && cursorRaw !== null && String(cursorRaw).trim() !== ''
+      ? formatCell(cursorRaw)
+      : null
+
+  if (!Array.isArray(rowsUnknown)) {
+    return <p className="endpoint-panel__muted text-sm">Invalid response shape for {rowsKey}.</p>
+  }
+
+  const rows = rowsUnknown
+
+  if (rows.length === 0) {
+    return (
+      <div className="endpoint-panel__portfolio-paged">
+        <p className="endpoint-panel__muted text-sm">Empty {rowsKey}.</p>
+        {cursorText !== null ? (
+          <p className="endpoint-panel__muted mt-3 text-xs">
+            <span className="font-medium text-foreground">cursor</span>{' '}
+            <span className="endpoint-panel__cursor-chip">{cursorText}</span>
+          </p>
+        ) : null}
+      </div>
+    )
+  }
+
+  const keys = collectKeysFromObjectRows(rows, PORTFOLIO_KEYS_SCAN)
+  if (keys.length === 0) {
+    return (
+      <p className="endpoint-panel__muted text-sm">
+        {rowsKey} has {rows.length} row(s) but no object fields to tabulate.
+      </p>
+    )
+  }
+
+  const shown = rows.slice(0, PORTFOLIO_TABLE_MAX)
+
+  return (
+    <div className="endpoint-panel__portfolio-paged">
+      <div className="endpoint-panel__table-wrap">
+        <table className="endpoint-panel__table endpoint-panel__table--portfolio">
+          <caption className="endpoint-panel__table-caption">
+            {rowsKey} · {rows.length} row{rows.length === 1 ? '' : 's'}
+          </caption>
+          <thead>
+            <tr>
+              {keys.map((k) => (
+                <th key={k} scope="col">
+                  {k}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((row, i) => (
+              <tr key={i}>
+                {keys.map((k) => (
+                  <td key={k}>
+                    {formatCell(
+                      row !== null && typeof row === 'object' && !Array.isArray(row)
+                        ? (row as Record<string, unknown>)[k]
+                        : undefined,
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {rows.length > PORTFOLIO_TABLE_MAX ? (
+        <p className="endpoint-panel__muted mt-2 text-xs">
+          Showing first {PORTFOLIO_TABLE_MAX} of {rows.length} rows. Use raw JSON for the full page.
+        </p>
+      ) : null}
+      {cursorText !== null ? (
+        <p className="endpoint-panel__muted mt-3 text-xs">
+          <span className="font-medium text-foreground">cursor</span>{' '}
+          <span className="endpoint-panel__cursor-chip">{cursorText}</span>
+        </p>
+      ) : null}
+    </div>
+  )
+})
+
 function JsonTablePreviewInner({ text }: JsonTablePreviewProps) {
   const parsed: unknown = useMemo(() => {
     try {
@@ -86,6 +212,14 @@ function JsonTablePreviewInner({ text }: JsonTablePreviewProps) {
   }
 
   const record = parsed as Record<string, unknown>
+
+  if (Array.isArray(record.settlements)) {
+    return <PortfolioPagedObjectsTableInner record={record} rowsKey="settlements" />
+  }
+  if (Array.isArray(record.fills)) {
+    return <PortfolioPagedObjectsTableInner record={record} rowsKey="fills" />
+  }
+
   const keys = Object.keys(record)
   return (
     <div className="endpoint-panel__table-wrap">
@@ -104,21 +238,6 @@ function JsonTablePreviewInner({ text }: JsonTablePreviewProps) {
 }
 
 const JsonTablePreview = memo(JsonTablePreviewInner)
-
-function formatCell(value: unknown): string {
-  if (value === null || value === undefined) {
-    return '—'
-  }
-  if (typeof value === 'object') {
-    try {
-      return JSON.stringify(value)
-    } catch (e) {
-      devLog.warn('table cell stringify failed', { cause: e })
-      return String(value)
-    }
-  }
-  return String(value)
-}
 
 function GenericEndpointResponsePanel({ endpoint }: EndpointResponsePanelProps) {
   const [state, setState] = useState<EndpointFetchState>({

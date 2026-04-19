@@ -7,6 +7,12 @@ export default [
     route('portfolio/balance', 'routes/endpoint.tsx', {
       id: 'routes/endpoint/kalshi-portfolio-balance',
     }),
+    route('portfolio/settlements', 'routes/endpoint.tsx', {
+      id: 'routes/endpoint/kalshi-portfolio-settlements',
+    }),
+    route('portfolio/fills', 'routes/endpoint.tsx', {
+      id: 'routes/endpoint/kalshi-portfolio-fills',
+    }),
     route('markets', 'routes/endpoint.tsx', { id: 'routes/endpoint/kalshi-markets' }),
     route('calendar-live', 'routes/endpoint.tsx', {
       id: 'routes/endpoint/kalshi-calendar-live',

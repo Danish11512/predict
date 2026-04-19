@@ -17,6 +17,7 @@ import {
 } from '@utils/calendarLiveDisplay'
 import { formatCalendarLiveMarketTableCell } from '@utils/calendarLiveMarketCells'
 import { sortCalendarLiveMarketsByLastPrice } from '@utils/sortCalendarLiveMarketsByLastPrice'
+import { GameProgressSection } from '@components/explorer/calendar-live/GameProgressSection'
 
 const HomeMarketRows = memo(function HomeMarketRows({
   markets,
@@ -93,6 +94,9 @@ const HomeEventBlock = memo(function HomeEventBlock({ row }: { row: CalendarLive
         </p>
       ) : null}
       {liveTitle ? <p className="home-games__live-title">{liveTitle}</p> : null}
+      {row.game_progress ? (
+        <GameProgressSection gameProgress={row.game_progress} classPrefix="home-games" />
+      ) : null}
       {seriesLine ? <p className="home-games__meta">{seriesLine}</p> : null}
       <HomeMarketRows markets={row.markets ?? []} />
     </article>

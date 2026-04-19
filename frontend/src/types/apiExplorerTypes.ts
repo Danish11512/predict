@@ -10,6 +10,8 @@ export type ApiExplorerResponseKind =
 export const ApiExplorerEndpointId = {
   Health: 'health',
   KalshiPortfolioBalance: 'kalshi-portfolio-balance',
+  KalshiPortfolioSettlements: 'kalshi-portfolio-settlements',
+  KalshiPortfolioFills: 'kalshi-portfolio-fills',
   KalshiMarkets: 'kalshi-markets',
   KalshiCalendarLive: 'kalshi-calendar-live',
   KalshiWsSmoke: 'kalshi-ws-smoke',
