@@ -21,6 +21,20 @@ export const API_EXPLORER_ENDPOINTS: readonly ApiExplorerEndpoint[] = [
     responseKind: ApiExplorerResponseKind.Json,
   },
   {
+    id: ApiExplorerEndpointId.KalshiPortfolioSettlements,
+    label: 'GET /portfolio/settlements',
+    routerPath: 'portfolio/settlements',
+    proxyPath: '/portfolio/settlements',
+    responseKind: ApiExplorerResponseKind.Json,
+  },
+  {
+    id: ApiExplorerEndpointId.KalshiPortfolioFills,
+    label: 'GET /portfolio/fills',
+    routerPath: 'portfolio/fills',
+    proxyPath: '/portfolio/fills',
+    responseKind: ApiExplorerResponseKind.Json,
+  },
+  {
     id: ApiExplorerEndpointId.KalshiMarkets,
     label: 'GET /markets',
     routerPath: 'markets',

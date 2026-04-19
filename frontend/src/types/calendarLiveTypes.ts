@@ -1,5 +1,23 @@
 /** Shapes returned by GET /calendar-live (subset for UI). */
 
+/** Derived from Kalshi ``live_data`` + ``details`` when ``status`` and ``widget_status`` are live. */
+export type GameProgressTimersV1 = {
+  period_index?: number | null
+  segment_seconds_remaining?: number | null
+  regulation_total_seconds?: number | null
+  regulation_elapsed_seconds?: number | null
+  regulation_remaining_seconds?: number | null
+  clock_display?: string | null
+}
+
+export type GameProgressV1 = {
+  sport: string
+  kalshi_live_data_type?: string | null
+  finished_ratio?: number | null
+  timers: GameProgressTimersV1
+  statistics: Record<string, string | number>
+}
+
 export type CalendarLiveMarketRow = {
   ticker?: string
   /** Kalshi short yes-side label; preferred for display when present. */
@@ -30,6 +48,8 @@ export type CalendarLiveEventRow = {
   game_status?: unknown
   widget_status?: unknown
   live_title?: unknown
+  /** Server-derived progress when Kalshi reports in-play live_data; null otherwise. */
+  game_progress?: GameProgressV1 | null
 }
 
 export type CalendarLiveParity = {
