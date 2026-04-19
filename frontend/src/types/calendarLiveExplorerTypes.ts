@@ -64,3 +64,6 @@ export interface CalendarLiveExplorerPollOptions {
 
 /** Default: polling is on whenever the hook is mounted with a matching route. */
 export const DEFAULT_CALENDAR_LIVE_POLL_ENABLED = true
+
+/** Default interval for `useCalendarLiveExplorerPoll` when `pollMs` omitted (ms). */
+export const CALENDAR_LIVE_POLL_MS = 1000

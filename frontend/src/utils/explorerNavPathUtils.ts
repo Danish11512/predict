@@ -1,4 +1,4 @@
-import { API_EXPLORER_ENDPOINTS } from '@constants/apiEndpointsConstants'
+import { API_EXPLORER_ENDPOINT_BY_PATHNAME } from '@constants/apiEndpointsConstants'
 
 /** Collapse trailing slashes; empty becomes `/`. */
 export function normalizeAppPathname(pathname: string): string {
@@ -19,8 +19,6 @@ export function getExplorerSheetSubtitle(activePath: string): string {
   if (n === '/') {
     return 'Home'
   }
-  const ep = API_EXPLORER_ENDPOINTS.find(
-    (e) => n === `/${e.routerPath}` || n === `/${e.routerPath}/`,
-  )
+  const ep = API_EXPLORER_ENDPOINT_BY_PATHNAME.get(n)
   return ep?.label ?? activePath
 }

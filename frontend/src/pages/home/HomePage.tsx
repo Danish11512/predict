@@ -2,8 +2,8 @@ import { memo } from 'react'
 
 import { HomeAside } from '@components/home/HomeAside'
 import {
+  API_EXPLORER_ENDPOINT_KALSHI_CALENDAR_LIVE,
   CALENDAR_LIVE_POLL_EXTRA_PATHS,
-  KALSHI_CALENDAR_LIVE_ENDPOINT,
 } from '@constants/apiEndpointsConstants'
 import { useCalendarLiveExplorerPoll } from '@hooks/useCalendarLiveExplorerPoll'
 import type { SportsCalendarLivePayload } from '@typings/calendarLiveTypes'
@@ -12,9 +12,12 @@ import { HomeGamesColumn } from './HomeGamesColumn'
 import './homePage.css'
 
 function HomePageInner() {
-  useCalendarLiveExplorerPoll<SportsCalendarLivePayload>(KALSHI_CALENDAR_LIVE_ENDPOINT, {
-    extraPathnames: CALENDAR_LIVE_POLL_EXTRA_PATHS,
-  })
+  useCalendarLiveExplorerPoll<SportsCalendarLivePayload>(
+    API_EXPLORER_ENDPOINT_KALSHI_CALENDAR_LIVE,
+    {
+      extraPathnames: CALENDAR_LIVE_POLL_EXTRA_PATHS,
+    },
+  )
 
   return (
     <div className="home-page">

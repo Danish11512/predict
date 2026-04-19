@@ -2,6 +2,11 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
+  API_EXPLORER_ENDPOINT_KALSHI_PORTFOLIO_FILLS,
+  API_EXPLORER_ENDPOINT_KALSHI_PORTFOLIO_SETTLEMENTS,
+  KALSHI_EVENTS_PROXY_PATH,
+} from '@constants/apiEndpointsConstants'
+import {
   HOME_ORDERS_EVENTS_PER_FETCH,
   HOME_ORDERS_FILLS_PAGE_LIMIT,
   HOME_ORDERS_ROW_HEIGHT_PX,
@@ -52,7 +57,7 @@ export function useHomeOrdersPanel() {
     let cursor: string | undefined
     while (true) {
       const url =
-        toProxiedUrl('/portfolio/fills') +
+        toProxiedUrl(API_EXPLORER_ENDPOINT_KALSHI_PORTFOLIO_FILLS.proxyPath) +
         buildQueryString({ limit: HOME_ORDERS_FILLS_PAGE_LIMIT, cursor })
       const res = await fetchJsonObject<KalshiGetFillsResponse>(url)
       if (!res.ok) {
@@ -78,7 +83,7 @@ export function useHomeOrdersPanel() {
       const fillMap = fillMapRef.current
       while (true) {
         const url =
-          toProxiedUrl('/portfolio/settlements') +
+          toProxiedUrl(API_EXPLORER_ENDPOINT_KALSHI_PORTFOLIO_SETTLEMENTS.proxyPath) +
           buildQueryString({
             limit: HOME_ORDERS_SETTLEMENT_PAGE_LIMIT,
             cursor: cursor ?? undefined,
@@ -174,7 +179,7 @@ export function useHomeOrdersPanel() {
       }
       titleStartedRef.current.add(r.eventTicker)
       const ticker = r.eventTicker
-      const url = `${toProxiedUrl('/events')}/${encodeURIComponent(ticker)}`
+      const url = `${toProxiedUrl(KALSHI_EVENTS_PROXY_PATH)}/${encodeURIComponent(ticker)}`
       void fetchJsonObject<KalshiGetEventResponse>(url).then((res) => {
         if (!res.ok) {
           setTitles((p) => ({ ...p, [ticker]: null }))

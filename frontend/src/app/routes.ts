@@ -1,5 +1,6 @@
 import { type RouteConfig, index, layout, route } from '@react-router/dev/routes'
 
+/** Endpoint segments mirror `routerPath` + `ApiExplorerEndpointId` in `apiEndpointsConstants.ts` — keep in sync when adding routes. */
 export default [
   layout('routes/explorerLayout.tsx', [
     index('routes/home.tsx'),
