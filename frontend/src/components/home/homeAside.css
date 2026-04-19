@@ -1,0 +1,21 @@
+.home-aside {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-height: 0;
+  width: 100%;
+}
+
+.home-aside__placeholder-card {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  min-height: 11.5rem;
+}
+
+.home-aside__orders {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}

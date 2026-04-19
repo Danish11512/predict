@@ -8,13 +8,12 @@ import { toProxiedUrl } from '@shared/lib/apiProxy'
 import { useCalendarLiveExplorerStore } from '@stores/calendarLiveExplorerStore'
 import {
   CalendarLiveExplorerEntryStatus,
+  CALENDAR_LIVE_POLL_MS,
   DEFAULT_CALENDAR_LIVE_POLL_ENABLED,
   type CalendarLiveExplorerPollOptions,
 } from '@typings/calendarLiveExplorerTypes'
 import type { CalendarLivePayload } from '@typings/calendarLiveTypes'
 import type { ApiExplorerEndpoint } from '@typings/apiExplorerTypes'
-
-export const CALENDAR_LIVE_POLL_MS = 1000
 
 export function useCalendarLiveExplorerPoll<T extends CalendarLivePayload>(
   endpoint: ApiExplorerEndpoint,

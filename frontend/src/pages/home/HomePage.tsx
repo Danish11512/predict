@@ -1,20 +1,23 @@
 import { memo } from 'react'
 
-import { useCalendarLiveExplorerPoll } from '@hooks/useCalendarLiveExplorerPoll'
+import { HomeAside } from '@components/home/HomeAside'
 import {
+  API_EXPLORER_ENDPOINT_KALSHI_CALENDAR_LIVE,
   CALENDAR_LIVE_POLL_EXTRA_PATHS,
-  KALSHI_CALENDAR_LIVE_ENDPOINT,
 } from '@constants/apiEndpointsConstants'
+import { useCalendarLiveExplorerPoll } from '@hooks/useCalendarLiveExplorerPoll'
 import type { SportsCalendarLivePayload } from '@typings/calendarLiveTypes'
 
 import { HomeGamesColumn } from './HomeGamesColumn'
-import { HomeOrdersPanel } from './HomeOrdersPanel'
 import './homePage.css'
 
 function HomePageInner() {
-  useCalendarLiveExplorerPoll<SportsCalendarLivePayload>(KALSHI_CALENDAR_LIVE_ENDPOINT, {
-    extraPathnames: CALENDAR_LIVE_POLL_EXTRA_PATHS,
-  })
+  useCalendarLiveExplorerPoll<SportsCalendarLivePayload>(
+    API_EXPLORER_ENDPOINT_KALSHI_CALENDAR_LIVE,
+    {
+      extraPathnames: CALENDAR_LIVE_POLL_EXTRA_PATHS,
+    },
+  )
 
   return (
     <div className="home-page">
@@ -23,12 +26,7 @@ function HomePageInner() {
           <HomeGamesColumn />
         </div>
         <section className="home-page__col home-page__aside" aria-label="Orders and aside">
-          <div className="home-aside">
-            <div className="home-aside__placeholder-card home-games__article" aria-hidden />
-            <div className="home-aside__orders">
-              <HomeOrdersPanel />
-            </div>
-          </div>
+          <HomeAside />
         </section>
       </div>
     </div>
