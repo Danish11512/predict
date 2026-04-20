@@ -66,11 +66,10 @@ const HomeMarketRows = memo(function HomeMarketRows({
 })
 
 const HomeEventBlock = memo(function HomeEventBlock({ row }: { row: CalendarLiveEventRow }) {
-  const { title: eventTitle, statusTokens } = getSportsCalendarEventHeadingParts(row, {
+  const { title: eventTitle } = getSportsCalendarEventHeadingParts(row, {
     omitTickerFallback: true,
   })
-  const extraStatusTokens = statusTokens.filter((t) => t !== 'LIVE')
-  const showStatusLine = statusTokens.length > 0
+  const showStatusLine = row.is_live
   const seriesLine = formatSeriesHumanLine(row)
   const liveTitle = formatOptionalTrimmedLine(row.live_title)
 
@@ -79,23 +78,19 @@ const HomeEventBlock = memo(function HomeEventBlock({ row }: { row: CalendarLive
       <h2 className="home-games__title">{eventTitle}</h2>
       {showStatusLine ? (
         <p className="home-games__status-line">
-          {row.is_live ? (
-            <span className="home-games__live-indicator">
-              <span className="home-games__live-dot" aria-hidden />
-              <span className="home-games__live-label">LIVE</span>
-            </span>
-          ) : null}
-          {extraStatusTokens.length > 0 ? (
-            <span className="home-games__status-extra">
-              {row.is_live ? <span aria-hidden> · </span> : null}
-              {extraStatusTokens.join(' · ')}
-            </span>
-          ) : null}
+          <span className="home-games__live-indicator">
+            <span className="home-games__live-dot" aria-hidden />
+            <span className="home-games__live-label">LIVE</span>
+          </span>
         </p>
       ) : null}
       {liveTitle ? <p className="home-games__live-title">{liveTitle}</p> : null}
       {row.game_progress ? (
-        <GameProgressSection gameProgress={row.game_progress} classPrefix="home-games" />
+        <GameProgressSection
+          gameProgress={row.game_progress}
+          classPrefix="home-games"
+          showMeta={false}
+        />
       ) : null}
       {seriesLine ? <p className="home-games__meta">{seriesLine}</p> : null}
       <HomeMarketRows markets={row.markets ?? []} />

@@ -397,11 +397,6 @@ def _timers(
     }
 
 
-def _kalshi_in_play(details: dict[str, Any]) -> bool:
-    ws = _norm_str(details.get("widget_status"))
-    return ws is not None and ws.lower() == "live"
-
-
 def _normalized_scores(flat: dict[str, Any]) -> dict[str, int | None]:
     home = _get_first_int(
         flat,
@@ -495,13 +490,16 @@ def game_progress_from_live_data(
     series_ticker: str,
     now: datetime | None = None,
 ) -> dict[str, Any] | None:
-    """Return structured progress for a calendar row, or ``None`` when not in-play / unusable."""
+    """Return structured progress for a calendar row, or ``None`` when live_data unusable.
+
+    Caller attaches only when ``/live_data/batch`` returned a row for the event milestone.
+    Live vs not-live for UI uses calendar row fields (e.g. ``is_live``); do not gate on
+    ``details.widget_status`` here.
+    """
     if not isinstance(live_data, dict):
         return None
     details = live_data.get("details")
     if not isinstance(details, dict):
-        return None
-    if not _kalshi_in_play(details):
         return None
     now = now or datetime.now(timezone.utc)
     _ = now  # reserved for future wall-clock estimates when API omits timers
