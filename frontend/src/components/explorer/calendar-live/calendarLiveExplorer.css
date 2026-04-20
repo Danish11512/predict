@@ -52,6 +52,22 @@
   color: var(--muted-foreground);
 }
 
+.calendar-live-explorer__game-progress-widget-live {
+  font-weight: 600;
+  color: #5ddf7c;
+}
+
+.calendar-live-explorer__game-progress-warning {
+  margin: 0 0 0.45rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 0.25rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--foreground);
+  background: color-mix(in srgb, hsl(38 92% 50%) 20%, transparent);
+  border-left: 3px solid color-mix(in srgb, hsl(38 92% 45%) 72%, var(--foreground));
+}
+
 .calendar-live-explorer__game-progress-meter {
   height: 0.35rem;
   margin-bottom: 0.4rem;

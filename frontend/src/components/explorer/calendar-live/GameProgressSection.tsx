@@ -18,6 +18,9 @@ export const GameProgressSection = memo(function GameProgressSection({
     gameProgress.finished_ratio != null && Number.isFinite(gameProgress.finished_ratio)
       ? Math.round(gameProgress.finished_ratio * 100)
       : null
+  const widgetLive =
+    typeof gameProgress.widget_status === 'string' &&
+    gameProgress.widget_status.toLowerCase() === 'live'
 
   return (
     <div className={`${classPrefix}__game-progress`}>
@@ -30,7 +33,15 @@ export const GameProgressSection = memo(function GameProgressSection({
             · {gameProgress.kalshi_live_data_type}
           </span>
         ) : null}
+        {widgetLive ? (
+          <span className={`${classPrefix}__game-progress-widget-live`}> · Widget live</span>
+        ) : null}
       </p>
+      {gameProgress.progress_warning ? (
+        <p className={`${classPrefix}__game-progress-warning`} role="status">
+          {gameProgress.progress_warning}
+        </p>
+      ) : null}
       {pct != null ? (
         <div
           className={`${classPrefix}__game-progress-meter`}

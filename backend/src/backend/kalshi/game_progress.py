@@ -218,7 +218,7 @@ def _extract_segment_remaining_seconds(flat: dict[str, Any]) -> int | None:
         n = _as_int(flat.get(k))
         if n is not None and n >= 0:
             return n
-    for k in ("game_clock", "clock", "period_clock", "time_remaining", "display_clock"):
+    for k in ("period_remaining_time", "game_clock", "clock", "period_clock", "time_remaining", "display_clock"):
         s = _get_first_str(flat, (k,))
         if s and (sec := _parse_mmss_clock(s)) is not None:
             return sec
@@ -268,7 +268,7 @@ def _finished_ratio_clock_sport(
     if period_idx is None or period_idx < 1:
         return None
     if period_idx > n_seg:
-        return 1.0
+        return None
     rem = seg_remaining
     if rem is None:
         rem = _extract_segment_remaining_seconds(flat)
@@ -385,7 +385,7 @@ def _timers(
             remaining_reg_sec = max(0, total_reg_sec - elapsed_reg_sec)
     clock_display = _get_first_str(
         flat,
-        ("game_clock", "clock", "period_clock", "display_clock", "time_remaining"),
+        ("game_clock", "clock", "period_clock", "display_clock", "time_remaining", "period_remaining_time"),
     )
     return {
         "period_index": period_idx,
@@ -398,11 +398,95 @@ def _timers(
 
 
 def _kalshi_in_play(details: dict[str, Any]) -> bool:
-    st = _norm_str(details.get("status"))
     ws = _norm_str(details.get("widget_status"))
-    if st is None or ws is None:
-        return False
-    return st.lower() == "live" and ws.lower() == "live"
+    return ws is not None and ws.lower() == "live"
+
+
+def _normalized_scores(flat: dict[str, Any]) -> dict[str, int | None]:
+    home = _get_first_int(
+        flat,
+        ("home_score", "home_points", "score_home", "home_team_score"),
+    )
+    away = _get_first_int(
+        flat,
+        ("away_score", "away_points", "score_away", "away_team_score"),
+    )
+    return {"home": home, "away": away}
+
+
+_JSONISH_MAX_DEPTH = 4
+_JSONISH_MAX_KEYS = 40
+_JSONISH_MAX_LIST = 24
+_JSONISH_MAX_STR = 512
+
+
+def _sanitize_jsonish(val: Any, depth: int) -> Any:
+    if depth <= 0:
+        return None
+    if val is None:
+        return None
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, int | float):
+        if isinstance(val, float) and val != val:
+            return None
+        return val
+    if isinstance(val, str):
+        s = val.strip()
+        if len(s) > _JSONISH_MAX_STR:
+            return s[: _JSONISH_MAX_STR] + "…"
+        return s
+    if isinstance(val, list):
+        return [_sanitize_jsonish(x, depth - 1) for x in val[:_JSONISH_MAX_LIST]]
+    if isinstance(val, dict):
+        out: dict[str, Any] = {}
+        for i, (k, v) in enumerate(val.items()):
+            if i >= _JSONISH_MAX_KEYS:
+                break
+            key = str(k)[:96]
+            out[key] = _sanitize_jsonish(v, depth - 1)
+        return out
+    return None
+
+
+def _sanitized_product_details(details: dict[str, Any]) -> dict[str, Any] | None:
+    raw = details.get("product_details")
+    if not isinstance(raw, dict):
+        return None
+    done = _sanitize_jsonish(raw, _JSONISH_MAX_DEPTH)
+    return done if isinstance(done, dict) else None
+
+
+def _progress_warning(
+    *,
+    sport: SportCode,
+    details: dict[str, Any],
+    flat: dict[str, Any],
+    period_idx: int | None,
+    regulation_tpl: tuple[int, int] | None,
+    finished_ratio: float | None,
+) -> str | None:
+    st_raw = _norm_str(details.get("status"))
+    if st_raw:
+        sl = st_raw.lower().replace("_", " ")
+        if "halftime" in sl or sl in ("half", "half time") or "half time" in sl:
+            return "Halftime"
+        if sl == "half":
+            return "Halftime"
+
+    if regulation_tpl is not None and period_idx is not None:
+        n_seg, _ = regulation_tpl
+        if period_idx > n_seg:
+            return "Overtime"
+
+    if sport not in ("mlb",):
+        tpl = regulation_tpl
+        if tpl is not None and finished_ratio is None:
+            if period_idx is not None and 1 <= period_idx <= tpl[0]:
+                if _extract_segment_remaining_seconds(flat) is None:
+                    return "Regulation estimate unavailable"
+
+    return None
 
 
 def game_progress_from_live_data(
@@ -440,10 +524,24 @@ def game_progress_from_live_data(
 
     timers = _timers(sport, period_idx, seg_rem, flat, finished_ratio)
     statistics = _collect_statistics(flat)
+    tpl = _regulation_segments(sport)
+    warning = _progress_warning(
+        sport=sport,
+        details=details,
+        flat=flat,
+        period_idx=period_idx,
+        regulation_tpl=tpl,
+        finished_ratio=finished_ratio,
+    )
 
     return {
         "sport": sport,
         "kalshi_live_data_type": ld_type,
+        "details_status": _norm_str(details.get("status")),
+        "widget_status": _norm_str(details.get("widget_status")),
+        "scores": _normalized_scores(flat),
+        "product_details": _sanitized_product_details(details),
+        "progress_warning": warning,
         "finished_ratio": finished_ratio,
         "timers": timers,
         "statistics": statistics,

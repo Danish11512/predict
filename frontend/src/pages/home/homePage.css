@@ -146,6 +146,22 @@
   color: var(--muted-foreground);
 }
 
+.home-games__game-progress-widget-live {
+  font-weight: 600;
+  color: color-mix(in srgb, #5ddf7c 92%, var(--foreground));
+}
+
+.home-games__game-progress-warning {
+  margin: 0 0 0.45rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--foreground);
+  background: color-mix(in srgb, hsl(38 92% 50%) 22%, transparent);
+  border-left: 3px solid color-mix(in srgb, hsl(38 92% 45%) 75%, var(--foreground));
+}
+
 .home-games__game-progress-meter {
   height: 0.375rem;
   margin-bottom: 0.45rem;

@@ -62,7 +62,55 @@ export function useCalendarLiveExplorerPoll<T extends CalendarLivePayload>(
       payload: res.data,
       updatedAt: Date.now(),
     })
-  }, [endpoint.id, setEntry, url])
+    const evs = res.data.events ?? []
+    // #region agent log
+    fetch('http://127.0.0.1:7287/ingest/09ecf6d9-8437-4ae0-abaa-9982611f2ee8', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': 'e574ad',
+      },
+      body: JSON.stringify({
+        sessionId: 'e574ad',
+        hypothesisId: 'H2-H5',
+        location: 'useCalendarLiveExplorerPoll.ts',
+        message: 'poll fetch ok',
+        data: {
+          eventCount: evs.length,
+          withGameProgress: evs.filter((e) => e.game_progress != null).length,
+          routerPath: endpoint.routerPath,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion agent log
+  }, [endpoint.id, endpoint.routerPath, setEntry, url])
+
+  useEffect(() => {
+    const n = location.pathname.replace(/\/+$/, '') || '/'
+    // #region agent log
+    fetch('http://127.0.0.1:7287/ingest/09ecf6d9-8437-4ae0-abaa-9982611f2ee8', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': 'e574ad',
+      },
+      body: JSON.stringify({
+        sessionId: 'e574ad',
+        hypothesisId: 'H5',
+        location: 'useCalendarLiveExplorerPoll.ts',
+        message: 'poll gate',
+        data: {
+          pathname: n,
+          pathOk,
+          pollActive: pathOk && extraEnabled,
+          extraPathnames: extraPathnames ?? [],
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion agent log
+  }, [location.pathname, pathOk, extraEnabled, extraPathnames])
 
   useVisibleInterval(load, pollMs, pathOk && extraEnabled)
 }
