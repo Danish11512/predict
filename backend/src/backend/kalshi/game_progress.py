@@ -532,6 +532,13 @@ def game_progress_from_live_data(
         finished_ratio=finished_ratio,
     )
 
+    pd_raw = details.get("product_details")
+    status_text_line: str | None = None
+    if isinstance(pd_raw, dict):
+        status_text_line = _norm_str(pd_raw.get("status_text"))
+    if status_text_line is None:
+        status_text_line = _norm_str(details.get("status_text"))
+
     return {
         "sport": sport,
         "kalshi_live_data_type": ld_type,
@@ -543,4 +550,5 @@ def game_progress_from_live_data(
         "finished_ratio": finished_ratio,
         "timers": timers,
         "statistics": statistics,
+        "status_text": status_text_line,
     }

@@ -27,6 +27,8 @@ export type GameProgressV1 = {
   product_details?: Record<string, unknown> | null
   /** Halftime, overtime, or uncertain regulation estimate (shown prominently in UI). */
   progress_warning?: string | null
+  /** Kalshi match status line when provided (e.g. `2nd - 75'`). */
+  status_text?: string | null
   finished_ratio?: number | null
   timers: GameProgressTimersV1
   statistics: Record<string, string | number>
@@ -59,6 +61,8 @@ export type CalendarLiveEventRow = {
   event?: Record<string, unknown>
   markets?: CalendarLiveMarketRow[]
   is_live?: boolean
+  /** Kalshi ``product_details.status_text`` when ``game_progress`` present (e.g. ``2nd - 75'``). */
+  status_text?: unknown
   game_status?: unknown
   widget_status?: unknown
   live_title?: unknown

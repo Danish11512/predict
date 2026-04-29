@@ -58,9 +58,25 @@
 }
 
 .home-games__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
   margin: 0 0 0.35rem;
   font-size: 1rem;
   line-height: 1.35;
+}
+
+.home-games__title-text {
+  min-width: 0;
+}
+
+.home-games__status-text {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  letter-spacing: 0.02em;
 }
 
 .home-games__status-line {
@@ -94,6 +110,13 @@
 
 .home-games__live-label {
   font-size: 0.6875rem;
+}
+
+.home-games__live-clock {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--muted-foreground);
 }
 
 .home-games__status-extra {

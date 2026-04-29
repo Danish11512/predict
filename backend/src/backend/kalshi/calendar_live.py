@@ -203,6 +203,23 @@ def _attach_game_progress_to_events(
         )
 
 
+def _extract_event_status_text(row: dict[str, Any]) -> str | None:
+    """Shallow copy of ``game_progress.status_text`` (Kalshi match line, e.g. ``2nd - 75'``)."""
+    gp = row.get("game_progress")
+    if not isinstance(gp, dict):
+        return None
+    raw = gp.get("status_text")
+    if isinstance(raw, str):
+        s = raw.strip()
+        return s if s else None
+    return None
+
+
+def _attach_status_text_to_events(rows: list[dict[str, Any]]) -> None:
+    for row in rows:
+        row["status_text"] = _extract_event_status_text(row)
+
+
 def _slug_from_metadata(meta: object) -> str | None:
     """Best-effort middle path segment for kalshi.com/markets URLs."""
     if not isinstance(meta, dict):
@@ -642,6 +659,7 @@ async def finalize_sports_calendar_from_aggregation(
         except Exception:
             _log.warning("live_data/batch failed in aggregation calendar path", exc_info=True)
     _attach_game_progress_to_events(out_events, ticker_to_milestone, live_data_agg)
+    _attach_status_text_to_events(out_events)
 
     parity = {
         "calendar_live_top_tickers": calendar_top,
@@ -865,6 +883,7 @@ async def _build_sports_from_card_feed(settings: Settings, max_events: int) -> d
         out_events.append(row)
 
     _attach_game_progress_to_events(out_events, ticker_to_milestone, live_data)
+    _attach_status_text_to_events(out_events)
 
     return {
         "max_events": max_events,

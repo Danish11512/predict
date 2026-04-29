@@ -69,6 +69,15 @@ export function getSportsCalendarEventHeadingParts(
   return { title, statusTokens }
 }
 
+/** Muted title suffix: Kalshi match status (e.g. `2nd - 75'`); never synthetic LIVE tokens. */
+export function formatCalendarEventStatusText(row: CalendarLiveEventRow): string {
+  return (
+    formatOptionalTrimmedLine(row.status_text) ??
+    formatOptionalTrimmedLine(row.game_progress?.status_text) ??
+    '—'
+  )
+}
+
 export function formatSportsCalendarEventHeading(
   row: CalendarLiveEventRow,
   options?: SportsCalendarHeadingOptions,

@@ -10,14 +10,16 @@ import {
 } from '@typings/calendarLiveExplorerTypes'
 import type { CalendarLiveEventRow, CalendarLiveMarketRow } from '@typings/calendarLiveTypes'
 import {
+  formatCalendarEventStatusText,
   formatCalendarMarketHumanTitle,
   formatOptionalTrimmedLine,
   formatSeriesHumanLine,
   getSportsCalendarEventHeadingParts,
 } from '@utils/calendarLiveDisplay'
 import { formatCalendarLiveMarketTableCell } from '@utils/calendarLiveMarketCells'
-import { sortCalendarLiveMarketsByLastPrice } from '@utils/sortCalendarLiveMarketsByLastPrice'
 import { GameProgressSection } from '@components/explorer/calendar-live/GameProgressSection'
+import { LiveStatusIndicator } from '@components/live/LiveStatusIndicator'
+import { sortCalendarLiveMarketsByLastPrice } from '@utils/sortCalendarLiveMarketsByLastPrice'
 
 const HomeMarketRows = memo(function HomeMarketRows({
   markets,
@@ -69,20 +71,22 @@ const HomeEventBlock = memo(function HomeEventBlock({ row }: { row: CalendarLive
   const { title: eventTitle } = getSportsCalendarEventHeadingParts(row, {
     omitTickerFallback: true,
   })
-  const showStatusLine = row.is_live
   const seriesLine = formatSeriesHumanLine(row)
   const liveTitle = formatOptionalTrimmedLine(row.live_title)
+  const statusBesideTitle = formatCalendarEventStatusText(row)
 
   return (
     <article className="home-games__article">
-      <h2 className="home-games__title">{eventTitle}</h2>
-      {showStatusLine ? (
-        <p className="home-games__status-line">
-          <span className="home-games__live-indicator">
-            <span className="home-games__live-dot" aria-hidden />
-            <span className="home-games__live-label">LIVE</span>
-          </span>
-        </p>
+      <h2 className="home-games__title">
+        <span className="home-games__title-text">{eventTitle}</span>
+        <span className="home-games__status-text">{statusBesideTitle}</span>
+      </h2>
+      {row.is_live ? (
+        <LiveStatusIndicator
+          classPrefix="home-games"
+          isLive={true}
+          gameProgress={row.game_progress}
+        />
       ) : null}
       {liveTitle ? <p className="home-games__live-title">{liveTitle}</p> : null}
       {row.game_progress ? (
