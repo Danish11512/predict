@@ -13,9 +13,80 @@
 }
 
 .calendar-live-explorer__article-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
   margin: 0 0 0.35rem;
   font-size: 0.95rem;
   font-weight: 600;
+  line-height: 1.35;
+}
+
+.calendar-live-explorer__article-title-text {
+  min-width: 0;
+}
+
+.calendar-live-explorer__article-status-text {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  letter-spacing: 0.02em;
+}
+
+.calendar-live-explorer__status-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.calendar-live-explorer__live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--destructive);
+}
+
+.calendar-live-explorer__live-dot {
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--destructive);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--destructive) 55%, transparent);
+  animation: calendar-live-explorer-live-dot-pulse 1.6s ease-in-out infinite;
+}
+
+.calendar-live-explorer__live-label {
+  font-size: 0.6875rem;
+}
+
+.calendar-live-explorer__live-clock {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--muted-foreground);
+}
+
+@keyframes calendar-live-explorer-live-dot-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--destructive) 45%, transparent);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.08);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--destructive) 0%, transparent);
+  }
 }
 
 .calendar-live-explorer__live-title {
@@ -50,6 +121,22 @@
 .calendar-live-explorer__game-progress-type {
   font-weight: 400;
   color: var(--muted-foreground);
+}
+
+.calendar-live-explorer__game-progress-widget-live {
+  font-weight: 600;
+  color: #5ddf7c;
+}
+
+.calendar-live-explorer__game-progress-warning {
+  margin: 0 0 0.45rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 0.25rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--foreground);
+  background: color-mix(in srgb, hsl(38 92% 50%) 20%, transparent);
+  border-left: 3px solid color-mix(in srgb, hsl(38 92% 45%) 72%, var(--foreground));
 }
 
 .calendar-live-explorer__game-progress-meter {

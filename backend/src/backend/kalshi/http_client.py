@@ -59,9 +59,12 @@ async def kalshi_get(
 async def kalshi_v1_get(
     path: str,
     *,
-    params: dict[str, Any] | None = None,
+    params: dict[str, Any] | list[tuple[str, str]] | None = None,
 ) -> httpx.Response:
-    """Unauthenticated GET to the Kalshi v1 public API (card_feed, live_data, filters)."""
+    """Unauthenticated GET to the Kalshi v1 public API (card_feed, live_data, filters).
+
+    Use a list of ``(key, value)`` tuples when a query key must repeat (e.g. ``milestone_ids`` explode).
+    """
     base = KALSHI_V1_PUBLIC_BASE_URL.rstrip("/")
     path_only = path.split("?", 1)[0]
     if not path_only.startswith("/"):

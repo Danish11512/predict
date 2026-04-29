@@ -145,6 +145,39 @@ def _ticker_to_milestone_id_from_list(milestones_list: list[dict[str, Any]]) -> 
     return out
 
 
+def _milestone_id_from_event_payload(ev: dict[str, Any] | None) -> str | None:
+    """Return the live-data milestone UUID for an event (card_feed index can miss a ticker)."""
+    if not isinstance(ev, dict):
+        return None
+    for key in ("promoted_milestone_id", "milestone_id"):
+        v = ev.get(key)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    pm = ev.get("product_metadata")
+    if isinstance(pm, dict):
+        for key in ("promoted_milestone_id", "milestone_id"):
+            v = pm.get(key)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+    return None
+
+
+def _augment_ticker_to_milestone(
+    base: dict[str, str],
+    by_ticker: dict[str, dict[str, Any]],
+    tickers: list[str],
+) -> dict[str, str]:
+    out = dict(base)
+    for et in tickers:
+        if et in out:
+            continue
+        ev = by_ticker.get(et)
+        mid = _milestone_id_from_event_payload(ev if isinstance(ev, dict) else None)
+        if mid:
+            out[et] = mid
+    return out
+
+
 def _attach_game_progress_to_events(
     rows: list[dict[str, Any]],
     ticker_to_milestone: dict[str, str],
@@ -168,6 +201,23 @@ def _attach_game_progress_to_events(
             series_ticker=st,
             now=now,
         )
+
+
+def _extract_event_status_text(row: dict[str, Any]) -> str | None:
+    """Shallow copy of ``game_progress.status_text`` (Kalshi match line, e.g. ``2nd - 75'``)."""
+    gp = row.get("game_progress")
+    if not isinstance(gp, dict):
+        return None
+    raw = gp.get("status_text")
+    if isinstance(raw, str):
+        s = raw.strip()
+        return s if s else None
+    return None
+
+
+def _attach_status_text_to_events(rows: list[dict[str, Any]]) -> None:
+    for row in rows:
+        row["status_text"] = _extract_event_status_text(row)
 
 
 def _slug_from_metadata(meta: object) -> str | None:
@@ -596,16 +646,20 @@ async def finalize_sports_calendar_from_aggregation(
     sports_set = set(sports_selected)
     out_events = _shape_out_events(agg, sports_selected, series_cache)
 
-    milestone_ids = sorted(
-        {agg.ticker_to_milestone_id[et] for et in sports_selected if et in agg.ticker_to_milestone_id}
+    ticker_to_milestone = _augment_ticker_to_milestone(
+        dict(agg.ticker_to_milestone_id),
+        agg.by_ticker,
+        sports_selected,
     )
+    milestone_ids = sorted({ticker_to_milestone[et] for et in sports_selected if et in ticker_to_milestone})
     live_data_agg: dict[str, Any] = {}
     if milestone_ids:
         try:
             live_data_agg = await _fetch_live_data_batch(milestone_ids)
         except Exception:
             _log.warning("live_data/batch failed in aggregation calendar path", exc_info=True)
-    _attach_game_progress_to_events(out_events, agg.ticker_to_milestone_id, live_data_agg)
+    _attach_game_progress_to_events(out_events, ticker_to_milestone, live_data_agg)
+    _attach_status_text_to_events(out_events)
 
     parity = {
         "calendar_live_top_tickers": calendar_top,
@@ -676,10 +730,12 @@ async def _fetch_live_data_batch(milestone_ids: list[str]) -> dict[str, Any]:
 
     Returns a dict keyed by milestone_id with the live_data details.
     """
-    if not milestone_ids:
+    mids = [m.strip() for m in milestone_ids if isinstance(m, str) and m.strip()]
+    if not mids:
         return {}
-    ids_param = ",".join(milestone_ids)
-    resp = await kalshi_v1_get("/live_data/batch", params={"milestone_ids": ids_param})
+    # Kalshi ``milestone_ids`` is OpenAPI explode=true — repeated keys, not comma-separated.
+    batch_params: list[tuple[str, str]] = [("milestone_ids", m) for m in mids]
+    resp = await kalshi_v1_get("/live_data/batch", params=batch_params)
     resp.raise_for_status()
     data = resp.json()
     out: dict[str, Any] = {}
@@ -713,6 +769,21 @@ def _milestone_ids_for_tickers(
     return ids
 
 
+def _milestone_batch_ids_union(
+    milestone_index: dict[str, Any],
+    selected: list[str],
+    by_ticker: dict[str, dict[str, Any]],
+) -> list[str]:
+    """Milestone ids for ``/live_data/batch`` from card_feed index plus per-event fallbacks."""
+    id_set: set[str] = set(_milestone_ids_for_tickers(selected, milestone_index))
+    for et in selected:
+        ev = by_ticker.get(et)
+        mid = _milestone_id_from_event_payload(ev if isinstance(ev, dict) else None)
+        if mid:
+            id_set.add(mid)
+    return sorted(id_set)
+
+
 async def _build_sports_from_card_feed(settings: Settings, max_events: int) -> dict[str, Any]:
     """Build the sports calendar payload using Kalshi's card_feed API (matches kalshi.com/calendar)."""
     tickers, sections, cf_milestones = await _fetch_card_feed_sports(max_events)
@@ -735,7 +806,7 @@ async def _build_sports_from_card_feed(settings: Settings, max_events: int) -> d
             series_needed.add(st)
     series_cache = await _fetch_series_dict_for_series_tickers(settings, series_needed)
 
-    milestone_ids = _milestone_ids_for_tickers(selected, cf_milestones)
+    milestone_ids = _milestone_batch_ids_union(cf_milestones, selected, by_ticker)
     live_data: dict[str, Any] = {}
     if milestone_ids:
         try:
@@ -751,6 +822,7 @@ async def _build_sports_from_card_feed(settings: Settings, max_events: int) -> d
                 for t in raw:
                     if isinstance(t, str) and t not in ticker_to_milestone:
                         ticker_to_milestone[t] = mid
+    ticker_to_milestone = _augment_ticker_to_milestone(ticker_to_milestone, by_ticker, selected)
 
     live_section_tickers: set[str] = set()
     for section in sections:
@@ -811,6 +883,7 @@ async def _build_sports_from_card_feed(settings: Settings, max_events: int) -> d
         out_events.append(row)
 
     _attach_game_progress_to_events(out_events, ticker_to_milestone, live_data)
+    _attach_status_text_to_events(out_events)
 
     return {
         "max_events": max_events,

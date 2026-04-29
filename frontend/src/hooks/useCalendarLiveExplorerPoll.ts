@@ -3,7 +3,6 @@ import { useLocation } from 'react-router'
 
 import { useVisibleInterval } from '@hooks/useVisibleInterval'
 import { fetchJsonObject } from '@shared/lib/fetchJsonObject'
-import { devLog } from '@shared/lib/devLog'
 import { toProxiedUrl } from '@shared/lib/apiProxy'
 import { useCalendarLiveExplorerStore } from '@stores/calendarLiveExplorerStore'
 import {
@@ -46,11 +45,6 @@ export function useCalendarLiveExplorerPoll<T extends CalendarLivePayload>(
 
     const res = await fetchJsonObject<T>(url)
     if (!res.ok) {
-      devLog.warn('calendar-live poll error', {
-        endpointId: endpoint.id,
-        url,
-        message: res.message,
-      })
       setEntry(endpoint.id, {
         status: CalendarLiveExplorerEntryStatus.Error,
         message: res.message,

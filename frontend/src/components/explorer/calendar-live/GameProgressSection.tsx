@@ -7,30 +7,48 @@ export type GameProgressSectionProps = {
   gameProgress: GameProgressV1
   /** BEM prefix: `home-games` or `calendar-live-explorer` */
   classPrefix: 'home-games' | 'calendar-live-explorer'
+  /** Heading + sport/type/widget line; home column hides these. */
+  showMeta?: boolean
 }
 
 export const GameProgressSection = memo(function GameProgressSection({
   gameProgress,
   classPrefix,
+  showMeta = true,
 }: GameProgressSectionProps) {
   const lines = useMemo(() => gameProgressDisplayLines(gameProgress), [gameProgress])
   const pct =
     gameProgress.finished_ratio != null && Number.isFinite(gameProgress.finished_ratio)
       ? Math.round(gameProgress.finished_ratio * 100)
       : null
+  const widgetLive =
+    typeof gameProgress.widget_status === 'string' &&
+    gameProgress.widget_status.toLowerCase() === 'live'
 
   return (
     <div className={`${classPrefix}__game-progress`}>
-      <h3 className={`${classPrefix}__game-progress-title`}>Game progress</h3>
-      <p className={`${classPrefix}__game-progress-sport`}>
-        {gameProgress.sport}
-        {gameProgress.kalshi_live_data_type ? (
-          <span className={`${classPrefix}__game-progress-type`}>
-            {' '}
-            · {gameProgress.kalshi_live_data_type}
-          </span>
-        ) : null}
-      </p>
+      {showMeta ? (
+        <>
+          <h3 className={`${classPrefix}__game-progress-title`}>Game progress</h3>
+          <p className={`${classPrefix}__game-progress-sport`}>
+            {gameProgress.sport}
+            {gameProgress.kalshi_live_data_type ? (
+              <span className={`${classPrefix}__game-progress-type`}>
+                {' '}
+                · {gameProgress.kalshi_live_data_type}
+              </span>
+            ) : null}
+            {widgetLive ? (
+              <span className={`${classPrefix}__game-progress-widget-live`}> · Widget live</span>
+            ) : null}
+          </p>
+        </>
+      ) : null}
+      {gameProgress.progress_warning ? (
+        <p className={`${classPrefix}__game-progress-warning`} role="status">
+          {gameProgress.progress_warning}
+        </p>
+      ) : null}
       {pct != null ? (
         <div
           className={`${classPrefix}__game-progress-meter`}

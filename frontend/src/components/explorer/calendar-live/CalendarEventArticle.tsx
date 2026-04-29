@@ -2,7 +2,13 @@ import { memo, useMemo } from 'react'
 
 import { devLog } from '@shared/lib/devLog'
 import type { CalendarLiveEventRow } from '@typings/calendarLiveTypes'
-import { formatSeriesHumanLine, formatSportsCalendarEventHeading } from '@utils/calendarLiveDisplay'
+import {
+  formatCalendarEventStatusText,
+  formatSeriesHumanLine,
+  getSportsCalendarEventHeadingParts,
+} from '@utils/calendarLiveDisplay'
+
+import { LiveStatusIndicator } from '@components/live/LiveStatusIndicator'
 
 import { GameProgressSection } from './GameProgressSection'
 import { CalendarMarketsTable } from './CalendarMarketsTable'
@@ -13,9 +19,12 @@ export type CalendarEventArticleProps = {
 }
 
 function CalendarEventArticleInner({ row, isSportsCalendar }: CalendarEventArticleProps) {
-  const title = isSportsCalendar
-    ? formatSportsCalendarEventHeading(row)
-    : String(row.title ?? row.event_ticker ?? '')
+  const primaryTitle = useMemo(() => {
+    if (!isSportsCalendar) {
+      return String(row.title ?? row.event_ticker ?? '')
+    }
+    return getSportsCalendarEventHeadingParts(row, { omitTickerFallback: false }).title
+  }, [isSportsCalendar, row])
 
   const eventTickerDescription = useMemo(() => {
     if (row.title == null) {
@@ -43,7 +52,19 @@ function CalendarEventArticleInner({ row, isSportsCalendar }: CalendarEventArtic
 
   return (
     <article className="calendar-live-explorer__article">
-      <h2 className="calendar-live-explorer__article-title">{title}</h2>
+      <h2 className="calendar-live-explorer__article-title">
+        <span className="calendar-live-explorer__article-title-text">{primaryTitle}</span>
+        <span className="calendar-live-explorer__article-status-text">
+          {formatCalendarEventStatusText(row)}
+        </span>
+      </h2>
+      {isSportsCalendar && row.is_live ? (
+        <LiveStatusIndicator
+          classPrefix="calendar-live-explorer"
+          isLive={true}
+          gameProgress={row.game_progress}
+        />
+      ) : null}
       {liveTitle ? <div className="calendar-live-explorer__live-title">{liveTitle}</div> : null}
       {isSportsCalendar && row.game_progress ? (
         <GameProgressSection

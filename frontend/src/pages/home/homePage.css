@@ -58,9 +58,25 @@
 }
 
 .home-games__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
   margin: 0 0 0.35rem;
   font-size: 1rem;
   line-height: 1.35;
+}
+
+.home-games__title-text {
+  min-width: 0;
+}
+
+.home-games__status-text {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  letter-spacing: 0.02em;
 }
 
 .home-games__status-line {
@@ -94,6 +110,13 @@
 
 .home-games__live-label {
   font-size: 0.6875rem;
+}
+
+.home-games__live-clock {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--muted-foreground);
 }
 
 .home-games__status-extra {
@@ -144,6 +167,22 @@
 .home-games__game-progress-type {
   font-weight: 400;
   color: var(--muted-foreground);
+}
+
+.home-games__game-progress-widget-live {
+  font-weight: 600;
+  color: color-mix(in srgb, #5ddf7c 92%, var(--foreground));
+}
+
+.home-games__game-progress-warning {
+  margin: 0 0 0.45rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--foreground);
+  background: color-mix(in srgb, hsl(38 92% 50%) 22%, transparent);
+  border-left: 3px solid color-mix(in srgb, hsl(38 92% 45%) 75%, var(--foreground));
 }
 
 .home-games__game-progress-meter {
