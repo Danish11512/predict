@@ -20,6 +20,7 @@ import {
   GameProgressSection,
   GameProgressSectionFallback,
 } from '@components/explorer/calendar-live/GameProgressSection'
+import { useHomeThresholdStore } from '@stores/homeThresholdStore'
 import { sortCalendarLiveMarketsByLastPrice } from '@utils/sortCalendarLiveMarketsByLastPrice'
 
 const HomeMarketRows = memo(function HomeMarketRows({
@@ -69,13 +70,21 @@ const HomeMarketRows = memo(function HomeMarketRows({
 })
 
 const HomeEventBlock = memo(function HomeEventBlock({ row }: { row: CalendarLiveEventRow }) {
+  const threshold = useHomeThresholdStore((s) => s.threshold)
   const { title: eventTitle } = getSportsCalendarEventHeadingParts(row, {
     omitTickerFallback: true,
   })
   const seriesLine = formatSeriesHumanLine(row)
 
+  const progressPct =
+    row.game_progress?.finished_ratio != null && Number.isFinite(row.game_progress.finished_ratio)
+      ? Math.round(row.game_progress.finished_ratio * 100)
+      : 0
+
   return (
-    <article className="home-games__article">
+    <article
+      className={`home-games__article${progressPct >= threshold ? ' home-games__article--green' : ''}`}
+    >
       <h2 className="home-games__title">
         <span className="home-games__title-text">{eventTitle}</span>
       </h2>
