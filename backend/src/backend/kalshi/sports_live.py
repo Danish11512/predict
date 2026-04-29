@@ -12,6 +12,7 @@ from backend.kalshi.constants import (
     METADATA_SPORTS_RE,
     NON_SPORTS_CATEGORIES,
     SPORTS_CATEGORY_HINTS,
+    parse_iso_utc,
 )
 from backend.settings import Settings
 
@@ -159,23 +160,6 @@ def event_is_sports(
     return True
 
 
-def _parse_ts_value(val: object) -> datetime | None:
-    if val is None:
-        return None
-    if isinstance(val, (int, float)):
-        return datetime.fromtimestamp(float(val), tz=ZoneInfo("UTC"))
-    if isinstance(val, str) and val.strip():
-        s = val.strip().replace("Z", "+00:00")
-        try:
-            dt = datetime.fromisoformat(s)
-        except ValueError:
-            return None
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=ZoneInfo("UTC"))
-        return dt.astimezone(ZoneInfo("UTC"))
-    return None
-
-
 def _collect_event_window_times(ev: dict[str, Any]) -> list[datetime]:
     found: list[datetime] = []
     for key in (
@@ -186,7 +170,7 @@ def _collect_event_window_times(ev: dict[str, Any]) -> list[datetime]:
         "close_time",
         "created_time",
     ):
-        dt = _parse_ts_value(ev.get(key))
+        dt = parse_iso_utc(ev.get(key))
         if dt:
             found.append(dt)
     markets = ev.get("markets") if isinstance(ev.get("markets"), list) else []
@@ -194,12 +178,12 @@ def _collect_event_window_times(ev: dict[str, Any]) -> list[datetime]:
         if not isinstance(m, dict):
             continue
         for key in ("close_time", "expected_expiration_time", "open_time", "expiration_time"):
-            dt = _parse_ts_value(m.get(key))
+            dt = parse_iso_utc(m.get(key))
             if dt:
                 found.append(dt)
         ct = m.get("close_ts")
         if isinstance(ct, int):
-            dt = _parse_ts_value(ct)
+            dt = parse_iso_utc(ct)
             if dt:
                 found.append(dt)
     return found

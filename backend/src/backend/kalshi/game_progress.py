@@ -658,12 +658,16 @@ def game_progress_from_live_data(
             finished_ratio = _finished_ratio_soccer(flat, sport)
             if finished_ratio is not None:
                 strategy = "clock"
-            elif _finished_ratio_clock_sport(sport, period_idx, seg_rem, flat) is not None:
-                finished_ratio = _finished_ratio_clock_sport(sport, period_idx, seg_rem, flat)
+            else:
+                clock_ratio = _finished_ratio_clock_sport(sport, period_idx, seg_rem, flat)
+                if clock_ratio is not None:
+                    finished_ratio = clock_ratio
+                    strategy = "clock"
+        else:
+            clock_ratio = _finished_ratio_clock_sport(sport, period_idx, seg_rem, flat)
+            if clock_ratio is not None:
+                finished_ratio = clock_ratio
                 strategy = "clock"
-        elif _finished_ratio_clock_sport(sport, period_idx, seg_rem, flat) is not None:
-            finished_ratio = _finished_ratio_clock_sport(sport, period_idx, seg_rem, flat)
-            strategy = "clock"
 
         # Tier 2: Period-only (no clock, but known total periods)
         if finished_ratio is None:

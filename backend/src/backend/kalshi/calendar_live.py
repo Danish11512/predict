@@ -30,6 +30,7 @@ from backend.kalshi.constants import (
     SPORTS_AGGREGATION_POOL_MAX_TICKERS,
     SPORTS_AGGREGATION_POOL_ME_MULTIPLIER,
     SPORTS_AGGREGATION_POOL_MIN_ROWS,
+    parse_iso_utc,
 )
 from backend.kalshi.http_client import kalshi_get, kalshi_v1_get
 from backend.kalshi.sports_live import event_is_sports
@@ -42,25 +43,12 @@ _sports_http_cache_mono: float = 0.0
 _sports_http_cache_lock = asyncio.Lock()
 
 
-def _parse_dt_utc(val: object) -> datetime | None:
-    if not isinstance(val, str) or not val.strip():
-        return None
-    s = val.strip().replace("Z", "+00:00")
-    try:
-        dt = datetime.fromisoformat(s)
-    except ValueError:
-        return None
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
-
-
 def _milestone_is_live_now(m: dict[str, Any], now: datetime) -> bool:
     """Milestone started; not ended, or ended within grace (API end can be early vs real-world LIVE)."""
-    start = _parse_dt_utc(m.get("start_date"))
+    start = parse_iso_utc(m.get("start_date"))
     if start is None or start > now:
         return False
-    end = _parse_dt_utc(m.get("end_date"))
+    end = parse_iso_utc(m.get("end_date"))
     if end is None:
         return True
     if end >= now:
@@ -200,8 +188,8 @@ def _attach_game_progress_to_events(
         ev_start: datetime | None = None
         ev_expiration: datetime | None = None
         if event_obj is not None:
-            ev_start = _parse_dt_utc(event_obj.get("strike_date"))
-            ev_expiration = _parse_dt_utc(
+            ev_start = parse_iso_utc(event_obj.get("strike_date"))
+            ev_expiration = parse_iso_utc(
                 event_obj.get("expected_expiration_time") or event_obj.get("expiration_time")
             )
 
@@ -532,7 +520,7 @@ async def aggregate_calendar_live_candidates(settings: Settings) -> CalendarLive
     scored: list[tuple[float, float, str]] = []
     for et, ev in by_ticker.items():
         sc = _event_score(ev, ms, mv_ids)
-        lu = _parse_dt_utc(ev.get("last_updated_ts"))
+        lu = parse_iso_utc(ev.get("last_updated_ts"))
         lu_ts = lu.timestamp() if lu else 0.0
         scored.append((sc, lu_ts, et))
     scored.sort(key=lambda x: (-x[0], -x[1], x[2]))
@@ -707,7 +695,6 @@ async def _fetch_card_feed_sports(max_events: int) -> tuple[list[str], list[dict
     seen: set[str] = set()
     all_sections: list[dict[str, Any]] = []
     milestones: dict[str, Any] = {}
-    cards: dict[str, Any] = {}
     cursor: str | None = None
 
     for _ in range(CARD_FEED_MAX_PAGES):
@@ -728,7 +715,6 @@ async def _fetch_card_feed_sports(max_events: int) -> tuple[list[str], list[dict
 
         hd = data.get("hydrated_data", {})
         milestones.update(hd.get("milestones", {}))
-        cards.update(hd.get("cards", {}))
 
         if len(tickers) >= max_events:
             break
@@ -923,7 +909,7 @@ async def _build_sports_calendar_live_payload_uncached(settings: Settings) -> di
 
 
 async def build_sports_calendar_live_payload(settings: Settings) -> dict[str, Any]:
-    """Same as uncached path; short TTL memo for duplicate browser polls."""
+    """Short TTL memo; lock held through fetch to prevent duplicate work."""
     global _sports_http_cache_payload, _sports_http_cache_mono
     now = time.monotonic()
     async with _sports_http_cache_lock:
@@ -932,8 +918,7 @@ async def build_sports_calendar_live_payload(settings: Settings) -> dict[str, An
             and (now - _sports_http_cache_mono) < CALENDAR_LIVE_SPORTS_HTTP_CACHE_TTL_SEC
         ):
             return _sports_http_cache_payload
-    payload = await _build_sports_calendar_live_payload_uncached(settings)
-    async with _sports_http_cache_lock:
+        payload = await _build_sports_calendar_live_payload_uncached(settings)
         _sports_http_cache_payload = payload
         _sports_http_cache_mono = time.monotonic()
     return payload

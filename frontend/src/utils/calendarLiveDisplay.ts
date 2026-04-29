@@ -77,14 +77,3 @@ export function formatCalendarEventStatusText(row: CalendarLiveEventRow): string
     '—'
   )
 }
-
-export function formatSportsCalendarEventHeading(
-  row: CalendarLiveEventRow,
-  options?: SportsCalendarHeadingOptions,
-): string {
-  const { title, statusTokens } = getSportsCalendarEventHeadingParts(row, options)
-  if (statusTokens.length === 0) {
-    return title
-  }
-  return `${title} [${statusTokens.join(' · ')}]`
-}

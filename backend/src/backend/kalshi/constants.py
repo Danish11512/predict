@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 # Public Kalshi v1 API (unauthenticated card_feed, live_data, etc.)
 KALSHI_V1_PUBLIC_BASE_URL = "https://api.elections.kalshi.com/v1"
@@ -171,3 +172,25 @@ METADATA_SPORTS_RE = re.compile(
     r"premier league|champions league|soccer|f1|formula|nascar|tennis|olympics?)\b",
     re.I,
 )
+
+
+def parse_iso_utc(val: object) -> datetime | None:
+    """Parse ISO-8601 string or numeric timestamp → UTC-aware ``datetime``.
+
+    Handles ``Z`` suffix, missing tzinfo ⇒ UTC, and int/float as Unix timestamps.
+    Returns ``None`` for empty/missing/unparsable values.
+    """
+    if val is None:
+        return None
+    if isinstance(val, (int, float)):
+        return datetime.fromtimestamp(float(val), tz=ZoneInfo("UTC"))
+    if isinstance(val, str) and val.strip():
+        s = val.strip().replace("Z", "+00:00")
+        try:
+            dt = datetime.fromisoformat(s)
+        except ValueError:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    return None
