@@ -1,4 +1,10 @@
-"""Derive structured game progress from Kalshi ``live_data`` rows (``details`` is schema-flexible)."""
+"""Derive structured game progress from Kalshi ``live_data`` rows (``details`` is schema-flexible).
+
+Multi-tier progress model:
+  Tier 1 (Clock): Regulated clock sports (NBA, NFL, NHL, MLB, soccer, etc.)
+  Tier 2 (Period-only): Sports with known total periods but no clock (tennis, golf, cricket, UFC, etc.)
+  Tier 3 (Temporal): Wall-clock fallback from event start/end timestamps.
+"""
 
 from __future__ import annotations
 
@@ -18,6 +24,12 @@ SportCode = Literal[
     "mlb",
     "mls",
     "soccer",
+    "tennis",
+    "golf",
+    "racing",
+    "cricket",
+    "fighting",
+    "darts",
     "generic",
 ]
 
@@ -157,7 +169,51 @@ def infer_sport_code(series_ticker: str, live_data_type: str | None) -> SportCod
         )
     ):
         return "soccer"
+    if "TENNIS" in blob or "ATP" in blob or "WTA" in blob or "KXTEN" in blob:
+        return "tennis"
+    if "GOLF" in blob or "PGATOUR" in blob or "LPGA" in blob:
+        return "golf"
+    if ("F1" in blob and "FIFA" not in blob) or "NASCAR" in blob or "INDY" in blob or "KXINDY" in blob or "KXF1" in blob:
+        return "racing"
+    if "CRICKET" in blob or "IPL" in blob or "T20" in blob or "PSL" in blob:
+        return "cricket"
+    if "UFC" in blob or "MMA" in blob or "BOXING" in blob or "FIGHT" in blob:
+        return "fighting"
+    if "DARTS" in blob:
+        return "darts"
     return "generic"
+
+
+_GRAND_SLAM_PREFIXES = frozenset({
+    "WIMBLEDON", "USOPEN", "FRENCH", "ROLANDGARROS",
+    "AUSTRALIAN", "AUSOPEN", "GRANDSLAM",
+})
+
+
+def _is_grand_slam_tennis(series_ticker: str) -> bool:
+    """Detect Grand Slam tennis events (best of 5 sets for men)."""
+    s = series_ticker.strip().upper().replace(" ", "").replace("_", "").replace("-", "")
+    for p in _GRAND_SLAM_PREFIXES:
+        if p in s:
+            return True
+    return False
+
+
+def _total_regulation_periods(sport: SportCode, series_ticker: str = "") -> int | None:
+    """Known total periods for period-only sports (no clock)."""
+    if sport == "tennis":
+        if _is_grand_slam_tennis(series_ticker):
+            return 5  # Grand Slam men: best of 5 sets
+        return 3  # best of 3 sets
+    if sport == "golf":
+        return 4  # 4 rounds
+    if sport == "cricket":
+        return 2  # 2 innings
+    if sport == "fighting":
+        return 3  # 3 rounds (5 for title fights is common)
+    if sport == "darts":
+        return 11  # common PDC best-of (e.g. best of 11 legs)
+    return None
 
 
 def _regulation_segments(sport: SportCode) -> tuple[int, int] | None:
@@ -201,6 +257,19 @@ def _extract_period_index(flat: dict[str, Any], sport: SportCode) -> int | None:
     minute = _get_first_int(flat, ("minute", "match_minute", "game_minute"))
     if minute is not None and sport in ("soccer", "mls"):
         return 1 if minute <= 45 else 2
+    # Sport-specific period keys
+    if sport == "tennis":
+        return _get_first_int(flat, ("set", "set_number", "current_set"))
+    if sport == "golf":
+        return _get_first_int(flat, ("round", "round_number", "hole", "current_hole"))
+    if sport in ("racing",):
+        return _get_first_int(flat, ("lap", "lap_number", "current_lap", "stage", "stage_number"))
+    if sport == "cricket":
+        return _get_first_int(flat, ("innings", "inning_number", "over", "current_over"))
+    if sport in ("fighting",):
+        return _get_first_int(flat, ("round", "round_number"))
+    if sport == "darts":
+        return _get_first_int(flat, ("leg", "set", "set_number", "current_leg"))
     return None
 
 
@@ -253,6 +322,19 @@ def _finished_ratio_mlb(flat: dict[str, Any]) -> float | None:
     else:
         frac += 0.25 / 9.0
     return max(0.0, min(1.0, frac))
+
+
+def _finished_ratio_period_only(sport: SportCode, period_idx: int | None, series_ticker: str = "") -> float | None:
+    """Period-only progress: (period - 1) / total_periods for sports without clocks.
+
+    When period_idx > total, treat as 1.0 (extra periods / overtime).
+    """
+    total = _total_regulation_periods(sport, series_ticker)
+    if total is None or period_idx is None or period_idx < 1:
+        return None
+    if period_idx > total:
+        return 1.0
+    return max(0.0, min(1.0, (period_idx - 1) / float(total)))
 
 
 def _finished_ratio_clock_sport(
@@ -347,6 +429,10 @@ def _timers(
     seg_remaining: int | None,
     flat: dict[str, Any],
     finished_ratio: float | None,
+    *,
+    now: datetime | None = None,
+    event_start: datetime | None = None,
+    series_ticker: str = "",
 ) -> dict[str, Any]:
     tpl = _regulation_segments(sport)
     seg_rem = seg_remaining
@@ -387,13 +473,26 @@ def _timers(
         flat,
         ("game_clock", "clock", "period_clock", "display_clock", "time_remaining", "period_remaining_time"),
     )
+
+    # Wall-clock elapsed since event start (universal)
+    elapsed_since_start: int | None = None
+    if event_start is not None and now is not None:
+        delta = (now - event_start).total_seconds()
+        if delta >= 0:
+            elapsed_since_start = int(delta)
+
+    # Total periods for display (e.g. "Set 2/3") — series_ticker for GS tennis
+    total_periods = _total_regulation_periods(sport, series_ticker) or (_regulation_segments(sport)[0] if _regulation_segments(sport) else None)
+
     return {
         "period_index": period_idx,
+        "total_periods": total_periods,
         "segment_seconds_remaining": seg_rem,
         "regulation_total_seconds": total_reg_sec,
         "regulation_elapsed_seconds": elapsed_reg_sec,
         "regulation_remaining_seconds": remaining_reg_sec,
         "clock_display": clock_display,
+        "elapsed_since_start_seconds": elapsed_since_start,
     }
 
 
@@ -455,6 +554,7 @@ def _sanitized_product_details(details: dict[str, Any]) -> dict[str, Any] | None
 def _progress_warning(
     *,
     sport: SportCode,
+    series_ticker: str = "",
     details: dict[str, Any],
     flat: dict[str, Any],
     period_idx: int | None,
@@ -474,6 +574,11 @@ def _progress_warning(
         if period_idx > n_seg:
             return "Overtime"
 
+    # Period-only overtime check
+    total_periods = _total_regulation_periods(sport, series_ticker)
+    if total_periods is not None and period_idx is not None and period_idx > total_periods:
+        return "Overtime"
+
     if sport not in ("mlb",):
         tpl = regulation_tpl
         if tpl is not None and finished_ratio is None:
@@ -484,70 +589,124 @@ def _progress_warning(
     return None
 
 
+def _finished_ratio_temporal(
+    now: datetime,
+    ev_start: datetime | None,
+    ev_end: datetime | None,
+) -> float | None:
+    """Temporal fallback: (now - start) / (end - start) when neither clock nor period data exists."""
+    if ev_start is None or ev_end is None:
+        return None
+    total = (ev_end - ev_start).total_seconds()
+    if total <= 0:
+        return None
+    elapsed = (now - ev_start).total_seconds()
+    if elapsed <= 0:
+        return 0.0
+    return max(0.0, min(1.0, elapsed / total))
+
+
 def game_progress_from_live_data(
     live_data: dict[str, Any] | None,
     *,
     series_ticker: str,
     now: datetime | None = None,
+    event_start: datetime | None = None,
+    event_expiration: datetime | None = None,
 ) -> dict[str, Any] | None:
-    """Return structured progress for a calendar row, or ``None`` when live_data unusable.
+    """Return structured progress for a calendar row.
 
-    Caller attaches only when ``/live_data/batch`` returned a row for the event milestone.
-    Live vs not-live for UI uses calendar row fields (e.g. ``is_live``); do not gate on
-    ``details.widget_status`` here.
+    Multi-tier progress strategy (applied in order):
+      1. Clock-based (NBA, NFL, NHL, soccer, etc.) — requires segment clock data.
+      2. Period-only (tennis, golf, cricket, fighting) — uses period_idx / total_periods.
+      3. Temporal — (now - event_start) / (event_expiration - event_start).
+
+    When ``live_data`` is ``None``, only temporal fallback (tier 3) is possible.
     """
-    if not isinstance(live_data, dict):
-        return None
-    details = live_data.get("details")
-    if not isinstance(details, dict):
-        return None
     now = now or datetime.now(timezone.utc)
-    _ = now  # reserved for future wall-clock estimates when API omits timers
+    sport: SportCode = "generic"
+    period_idx: int | None = None
+    seg_rem: int | None = None
+    flat: dict[str, Any] = {}
+    details: dict[str, Any] = {}
+    ld_type: str | None = None
 
-    flat = _flatten_details_for_lookup(details)
-    ld_type = _norm_str(live_data.get("type"))
+    if isinstance(live_data, dict):
+        det = live_data.get("details")
+        if isinstance(det, dict):
+            details = det
+            flat = _flatten_details_for_lookup(det)
+            ld_type = _norm_str(live_data.get("type"))
+
+    # Detect sport before extracting period index (need sport for sport-specific keys)
     sport = infer_sport_code(series_ticker, ld_type)
-    period_idx = _extract_period_index(flat, sport)
-    seg_rem = _extract_segment_remaining_seconds(flat)
+
+    if isinstance(live_data, dict) and details:
+        period_idx = _extract_period_index(flat, sport)
+        seg_rem = _extract_segment_remaining_seconds(flat)
 
     finished_ratio: float | None = None
-    if sport == "mlb":
-        finished_ratio = _finished_ratio_mlb(flat)
-    elif sport in ("soccer", "mls"):
-        finished_ratio = _finished_ratio_soccer(flat, sport) or _finished_ratio_clock_sport(
-            sport, period_idx, seg_rem, flat
-        )
-    else:
-        finished_ratio = _finished_ratio_clock_sport(sport, period_idx, seg_rem, flat)
+    strategy: str = "none"
 
-    timers = _timers(sport, period_idx, seg_rem, flat, finished_ratio)
-    statistics = _collect_statistics(flat)
+    if details:
+        # Tier 1: Clock-based (sports with regulation segments)
+        if sport == "mlb":
+            finished_ratio = _finished_ratio_mlb(flat)
+            if finished_ratio is not None:
+                strategy = "clock"
+        elif sport in ("soccer", "mls"):
+            finished_ratio = _finished_ratio_soccer(flat, sport)
+            if finished_ratio is not None:
+                strategy = "clock"
+            elif _finished_ratio_clock_sport(sport, period_idx, seg_rem, flat) is not None:
+                finished_ratio = _finished_ratio_clock_sport(sport, period_idx, seg_rem, flat)
+                strategy = "clock"
+        elif _finished_ratio_clock_sport(sport, period_idx, seg_rem, flat) is not None:
+            finished_ratio = _finished_ratio_clock_sport(sport, period_idx, seg_rem, flat)
+            strategy = "clock"
+
+        # Tier 2: Period-only (no clock, but known total periods)
+        if finished_ratio is None:
+            finished_ratio = _finished_ratio_period_only(sport, period_idx, series_ticker)
+            if finished_ratio is not None:
+                strategy = "period"
+
+    # Tier 3: Temporal fallback (wall clock) — works even without live_data
+    if finished_ratio is None:
+        finished_ratio = _finished_ratio_temporal(now, event_start, event_expiration)
+        if finished_ratio is not None:
+            strategy = "temporal"
+
+    timers = _timers(sport, period_idx, seg_rem, flat, finished_ratio, now=now, event_start=event_start, series_ticker=series_ticker)
+    statistics = _collect_statistics(flat) if flat else {}
     tpl = _regulation_segments(sport)
     warning = _progress_warning(
         sport=sport,
+        series_ticker=series_ticker,
         details=details,
         flat=flat,
         period_idx=period_idx,
         regulation_tpl=tpl,
         finished_ratio=finished_ratio,
-    )
+    ) if details else None
 
-    pd_raw = details.get("product_details")
+    pd_raw = details.get("product_details") if details else None
     status_text_line: str | None = None
     if isinstance(pd_raw, dict):
         status_text_line = _norm_str(pd_raw.get("status_text"))
     if status_text_line is None:
-        status_text_line = _norm_str(details.get("status_text"))
+        status_text_line = _norm_str(details.get("status_text")) if details else None
 
     return {
         "sport": sport,
         "kalshi_live_data_type": ld_type,
-        "details_status": _norm_str(details.get("status")),
-        "widget_status": _norm_str(details.get("widget_status")),
-        "scores": _normalized_scores(flat),
-        "product_details": _sanitized_product_details(details),
+        "details_status": _norm_str(details.get("status")) if details else None,
+        "widget_status": _norm_str(details.get("widget_status")) if details else None,
+        "scores": _normalized_scores(flat) if flat else {"home": None, "away": None},
+        "product_details": _sanitized_product_details(details) if details else None,
         "progress_warning": warning,
         "finished_ratio": finished_ratio,
+        "strategy": strategy,
         "timers": timers,
         "statistics": statistics,
         "status_text": status_text_line,

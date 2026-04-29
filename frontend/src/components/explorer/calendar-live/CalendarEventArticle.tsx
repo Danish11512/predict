@@ -7,7 +7,7 @@ import {
   getSportsCalendarEventHeadingParts,
 } from '@utils/calendarLiveDisplay'
 
-import { GameProgressSection } from './GameProgressSection'
+import { GameProgressSection, GameProgressSectionFallback } from './GameProgressSection'
 import { CalendarMarketsTable } from './CalendarMarketsTable'
 
 export type CalendarEventArticleProps = {
@@ -47,8 +47,12 @@ function CalendarEventArticleInner({ row, isSportsCalendar }: CalendarEventArtic
       <h2 className="calendar-live-explorer__article-title">
         <span className="calendar-live-explorer__article-title-text">{primaryTitle}</span>
       </h2>
-      {isSportsCalendar && row.game_progress ? (
-        <GameProgressSection gameProgress={row.game_progress} />
+      {isSportsCalendar ? (
+        row.game_progress ? (
+          <GameProgressSection gameProgress={row.game_progress} />
+        ) : (
+          <GameProgressSectionFallback />
+        )
       ) : null}
       <div className="calendar-live-explorer__meta">
         <div className="calendar-live-explorer__meta-row">

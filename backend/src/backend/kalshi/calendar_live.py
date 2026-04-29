@@ -183,7 +183,7 @@ def _attach_game_progress_to_events(
     ticker_to_milestone: dict[str, str],
     live_data_by_milestone: dict[str, Any],
 ) -> None:
-    """Set ``game_progress`` on each row (``None`` when not Kalshi in-play or missing live data)."""
+    """Set ``game_progress`` on each row (temporal fallback even without milestone)."""
     now = datetime.now(timezone.utc)
     for row in rows:
         et = row.get("event_ticker")
@@ -191,15 +191,30 @@ def _attach_game_progress_to_events(
         if not isinstance(et, str) or not isinstance(st, str):
             row["game_progress"] = None
             continue
+
+        # Extract event timestamps (for temporal fallback or live data)
+        event_obj: dict[str, Any] | None = None
+        raw_ev = row.get("event")
+        if isinstance(raw_ev, dict):
+            event_obj = raw_ev
+        ev_start: datetime | None = None
+        ev_expiration: datetime | None = None
+        if event_obj is not None:
+            ev_start = _parse_dt_utc(event_obj.get("strike_date"))
+            ev_expiration = _parse_dt_utc(
+                event_obj.get("expected_expiration_time") or event_obj.get("expiration_time")
+            )
+
+        # Live data requires milestone id
         mid = ticker_to_milestone.get(et)
-        if not mid:
-            row["game_progress"] = None
-            continue
-        ld = live_data_by_milestone.get(mid)
+        ld = live_data_by_milestone.get(mid) if mid else None
+
         row["game_progress"] = game_progress_from_live_data(
             ld if isinstance(ld, dict) else None,
             series_ticker=st,
             now=now,
+            event_start=ev_start,
+            event_expiration=ev_expiration,
         )
 
 

@@ -3,11 +3,13 @@
 /** Derived from Kalshi ``live_data`` + ``details`` when ``status`` and ``widget_status`` are live. */
 export type GameProgressTimersV1 = {
   period_index?: number | null
+  total_periods?: number | null
   segment_seconds_remaining?: number | null
   regulation_total_seconds?: number | null
   regulation_elapsed_seconds?: number | null
   regulation_remaining_seconds?: number | null
   clock_display?: string | null
+  elapsed_since_start_seconds?: number | null
 }
 
 export type GameProgressNormalizedScores = {
@@ -30,6 +32,8 @@ export type GameProgressV1 = {
   /** Kalshi match status line when provided (e.g. `2nd - 75'`). */
   status_text?: string | null
   finished_ratio?: number | null
+  /** Which progress strategy was used: ``"clock"`` | ``"period"`` | ``"temporal"`` | ``"none"`` */
+  strategy?: string | null
   timers: GameProgressTimersV1
   statistics: Record<string, string | number>
 }

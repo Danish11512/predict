@@ -7,6 +7,21 @@ export type GameProgressSectionProps = {
   gameProgress: GameProgressV1
 }
 
+/** Static fallback when no game_progress data (strategy=none). Shows LIVE + 0% + 0:00. */
+export const GameProgressSectionFallback = memo(function GameProgressSectionFallback() {
+  return (
+    <div className="gp-root">
+      <div className="gp-pills">
+        <span className="gp-pill gp-pill--live">LIVE</span>
+        <span className="gp-pill gp-pill--stat">0%</span>
+      </div>
+      <div className="gp-details">
+        <span className="gp-elapsed">Elapsed 0:00</span>
+      </div>
+    </div>
+  )
+})
+
 export const GameProgressSection = memo(function GameProgressSection({
   gameProgress,
 }: GameProgressSectionProps) {

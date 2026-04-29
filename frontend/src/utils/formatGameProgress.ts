@@ -46,17 +46,31 @@ const LAST_PLAY_KEYS = new Set(['last_play', 'last_event', 'description', 'summa
 
 export function getGamePillsInfo(gp: GameProgressV1): GamePillsInfo {
   const clock = liveClockInline(gp)
+  const isNoData = gp.strategy === 'none' || gp.strategy == null
   const pct =
     gp.finished_ratio != null && Number.isFinite(gp.finished_ratio)
       ? Math.round(gp.finished_ratio * 100)
       : null
   const isOt = gp.progress_warning === 'Overtime'
-  const pctOrOt = isOt ? 'OT' : pct != null ? `${pct}%` : null
-  const elapsed =
+  // Show "0%" when no data so user always sees something
+  const pctOrOt = isOt ? 'OT' : pct != null ? `${pct}%` : isNoData ? '0%' : null
+
+  // Elapsed regulation seconds (clock sports) or elapsed-since-start (universal)
+  const elapsedReg =
     gp.timers.regulation_elapsed_seconds != null &&
     Number.isFinite(gp.timers.regulation_elapsed_seconds)
       ? formatSeconds(gp.timers.regulation_elapsed_seconds)
       : null
+  const elapsedWall =
+    gp.timers.elapsed_since_start_seconds != null &&
+    Number.isFinite(gp.timers.elapsed_since_start_seconds)
+      ? formatSeconds(gp.timers.elapsed_since_start_seconds)
+      : null
+  // Prefer regulation elapsed for clock sports, else wall clock for period-only/temporal
+  // Show "0:00" fallback when no data
+  const elapsedDisplay =
+    elapsedReg ?? (gp.strategy === 'clock' ? null : elapsedWall) ?? (isNoData ? '0:00' : null)
+
   const sc = gp.scores
   const omitScoreDupes = sc != null && (sc.home != null || sc.away != null)
   const keys = Object.keys(gp.statistics).filter((k) => !(omitScoreDupes && SCORE_STAT_KEYS.has(k)))
@@ -83,7 +97,7 @@ export function getGamePillsInfo(gp: GameProgressV1): GamePillsInfo {
     liveLabel: 'LIVE',
     pctOrOt,
     positionTime: clock.clockVisual !== '—' ? clock.clockVisual : null,
-    elapsedDisplay: elapsed,
+    elapsedDisplay,
     statsDisplay,
     lastPlayDisplay,
   }
@@ -116,43 +130,71 @@ function parseMmssClockSeconds(raw: string): number | null {
   return mm * 60 + ss
 }
 
-function formatLivePeriodPrefix(sportRaw: string, periodIndex: number | null): string | null {
+function formatLivePeriodPrefix(
+  sportRaw: string,
+  periodIndex: number | null,
+  totalPeriods: number | null,
+): string | null {
   if (periodIndex == null || periodIndex < 1) {
     return null
   }
   const s = sportRaw.toLowerCase()
+  const suf = totalPeriods != null && totalPeriods > 0 ? `/${totalPeriods}` : ''
+
   if (s === 'nba' || s === 'wnba') {
     if (periodIndex <= 4) {
-      return `Q${periodIndex}`
+      return `Q${periodIndex}${suf}`
     }
     return periodIndex === 5 ? 'OT' : `OT${periodIndex - 4}`
   }
   if (s === 'nfl' || s === 'ncaaf') {
     if (periodIndex <= 4) {
-      return `Q${periodIndex}`
+      return `Q${periodIndex}${suf}`
     }
     return periodIndex === 5 ? 'OT' : `OT${periodIndex - 4}`
   }
   if (s === 'nhl') {
     if (periodIndex <= 3) {
-      return `P${periodIndex}`
+      return `P${periodIndex}${suf}`
     }
     return periodIndex === 4 ? 'OT' : `OT${periodIndex - 3}`
   }
   if (s === 'cbb') {
     if (periodIndex <= 2) {
-      return `H${periodIndex}`
+      return `H${periodIndex}${suf}`
     }
     return periodIndex === 3 ? 'OT' : `OT${periodIndex - 2}`
   }
   if (s === 'mlb') {
-    return `Inn ${periodIndex}`
+    return `Inn ${periodIndex}${suf}`
   }
   if (s === 'soccer' || s === 'mls') {
     if (periodIndex <= 2) {
       return periodIndex === 1 ? '1H' : '2H'
     }
     return periodIndex === 3 ? 'ET' : `ET${periodIndex - 2}`
+  }
+  // Period-only sports
+  if (s === 'tennis') {
+    return `Set ${periodIndex}${suf}`
+  }
+  if (s === 'golf') {
+    return `Rd ${periodIndex}${suf}`
+  }
+  if (s === 'racing') {
+    return `Lap ${periodIndex}${suf}`
+  }
+  if (s === 'cricket') {
+    if (periodIndex <= 2) {
+      return `Inn ${periodIndex}${suf}`
+    }
+    return `Over ${periodIndex}`
+  }
+  if (s === 'fighting') {
+    return `Rd ${periodIndex}${suf}`
+  }
+  if (s === 'darts') {
+    return `Leg ${periodIndex}${suf}`
   }
   if (periodIndex <= 4) {
     return `Q${periodIndex}`
@@ -223,7 +265,11 @@ export function liveClockInline(gp: GameProgressV1 | null | undefined): LiveCloc
 
   const t = gp.timers
   const sport = gp.sport ?? 'generic'
-  const periodPrefix = formatLivePeriodPrefix(sport, t.period_index ?? null)
+  const periodPrefix = formatLivePeriodPrefix(
+    sport,
+    t.period_index ?? null,
+    t.total_periods ?? null,
+  )
   const seg = floorSegmentSecondsRemaining(t.segment_seconds_remaining)
   const clockRaw = trimClockDisplay(t.clock_display)
   const parsedClock = clockRaw ? parseMmssClockSeconds(clockRaw) : null
