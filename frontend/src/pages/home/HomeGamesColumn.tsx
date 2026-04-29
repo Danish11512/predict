@@ -3,6 +3,7 @@ import { memo, useMemo } from 'react'
 import { Skeleton } from '@components/ui/skeleton'
 import { API_EXPLORER_ENDPOINT_KALSHI_CALENDAR_LIVE } from '@constants/apiEndpointsConstants'
 import { useCalendarLiveExplorerStore } from '@stores/calendarLiveExplorerStore'
+import { useHomeThresholdStore } from '@stores/homeThresholdStore'
 import {
   CALENDAR_LIVE_HOME_MARKETS_PER_EVENT,
   CALENDAR_LIVE_MARKET_DATA_COLUMNS,
@@ -14,19 +15,27 @@ import {
   formatSeriesHumanLine,
   getSportsCalendarEventHeadingParts,
 } from '@utils/calendarLiveDisplay'
-
 import { formatCalendarLiveMarketTableCell } from '@utils/calendarLiveMarketCells'
+import { sortCalendarLiveMarketsByLastPrice } from '@utils/sortCalendarLiveMarketsByLastPrice'
+
 import {
   GameProgressSection,
   GameProgressSectionFallback,
 } from '@components/explorer/calendar-live/GameProgressSection'
-import { useHomeThresholdStore } from '@stores/homeThresholdStore'
-import { sortCalendarLiveMarketsByLastPrice } from '@utils/sortCalendarLiveMarketsByLastPrice'
+
+/** 1 ÷ last_price_dollars as number. Returns null if not usable. */
+function payoutValue(m: CalendarLiveMarketRow): number | null {
+  const raw = m.last_price_dollars
+  const price = raw != null ? Number(raw) : NaN
+  return Number.isFinite(price) && price > 0 ? 1 / price : null
+}
 
 const HomeMarketRows = memo(function HomeMarketRows({
   markets,
+  showPayout,
 }: {
   markets: readonly CalendarLiveMarketRow[]
+  showPayout: boolean
 }) {
   const top = useMemo(
     () =>
@@ -47,11 +56,20 @@ const HomeMarketRows = memo(function HomeMarketRows({
                 {c.label}
               </th>
             ))}
+            {showPayout ? (
+              <th scope="col" className="home-games__payout-th">
+                Payout
+              </th>
+            ) : null}
           </tr>
         </thead>
         <tbody>
           {top.map((m, i) => {
             const label = formatCalendarMarketHumanTitle(m) ?? 'Market'
+            const pv = showPayout ? payoutValue(m) : null
+            const payoutDisplay = pv != null ? `x${pv.toFixed(2)}` : null
+            const payoutClass =
+              pv != null && pv >= 1.1 ? 'home-games__payout--green' : 'home-games__payout--grey'
             return (
               <tr key={m.ticker != null ? String(m.ticker) : `m-${i}`}>
                 <td>
@@ -60,6 +78,7 @@ const HomeMarketRows = memo(function HomeMarketRows({
                 {CALENDAR_LIVE_MARKET_DATA_COLUMNS.map((c) => (
                   <td key={c.key}>{formatCalendarLiveMarketTableCell(m, c.key)}</td>
                 ))}
+                {payoutDisplay != null ? <td className={payoutClass}>{payoutDisplay}</td> : null}
               </tr>
             )
           })}
@@ -81,10 +100,10 @@ const HomeEventBlock = memo(function HomeEventBlock({ row }: { row: CalendarLive
       ? Math.round(row.game_progress.finished_ratio * 100)
       : 0
 
+  const isGreen = progressPct >= threshold
+
   return (
-    <article
-      className={`home-games__article${progressPct >= threshold ? ' home-games__article--green' : ''}`}
-    >
+    <article className={`home-games__article${isGreen ? ' home-games__article--green' : ''}`}>
       <h2 className="home-games__title">
         <span className="home-games__title-text">{eventTitle}</span>
       </h2>
@@ -95,7 +114,7 @@ const HomeEventBlock = memo(function HomeEventBlock({ row }: { row: CalendarLive
       )}
 
       {seriesLine ? <p className="home-games__meta">{seriesLine}</p> : null}
-      <HomeMarketRows markets={row.markets ?? []} />
+      <HomeMarketRows markets={row.markets ?? []} showPayout={isGreen} />
     </article>
   )
 })

@@ -110,6 +110,22 @@
   color: var(--foreground);
 }
 
+.home-games__payout-th {
+  color: var(--color-chart-3, #22c55e);
+}
+
+.home-games__payout--green {
+  color: var(--color-chart-3, #22c55e);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-games__payout--grey {
+  color: var(--muted-foreground);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
 /* --- Game Progress pills (shared) --- */
 
 .gp-root {
