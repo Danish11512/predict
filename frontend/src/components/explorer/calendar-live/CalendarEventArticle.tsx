@@ -3,12 +3,9 @@ import { memo, useMemo } from 'react'
 import { devLog } from '@shared/lib/devLog'
 import type { CalendarLiveEventRow } from '@typings/calendarLiveTypes'
 import {
-  formatCalendarEventStatusText,
   formatSeriesHumanLine,
   getSportsCalendarEventHeadingParts,
 } from '@utils/calendarLiveDisplay'
-
-import { LiveStatusIndicator } from '@components/live/LiveStatusIndicator'
 
 import { GameProgressSection } from './GameProgressSection'
 import { CalendarMarketsTable } from './CalendarMarketsTable'
@@ -45,32 +42,13 @@ function CalendarEventArticleInner({ row, isSportsCalendar }: CalendarEventArtic
     }
   }, [row.event, row.event_ticker])
 
-  const liveTitle =
-    isSportsCalendar && row.live_title != null && String(row.live_title).length > 0
-      ? String(row.live_title)
-      : null
-
   return (
     <article className="calendar-live-explorer__article">
       <h2 className="calendar-live-explorer__article-title">
         <span className="calendar-live-explorer__article-title-text">{primaryTitle}</span>
-        <span className="calendar-live-explorer__article-status-text">
-          {formatCalendarEventStatusText(row)}
-        </span>
       </h2>
-      {isSportsCalendar && row.is_live ? (
-        <LiveStatusIndicator
-          classPrefix="calendar-live-explorer"
-          isLive={true}
-          gameProgress={row.game_progress}
-        />
-      ) : null}
-      {liveTitle ? <div className="calendar-live-explorer__live-title">{liveTitle}</div> : null}
       {isSportsCalendar && row.game_progress ? (
-        <GameProgressSection
-          gameProgress={row.game_progress}
-          classPrefix="calendar-live-explorer"
-        />
+        <GameProgressSection gameProgress={row.game_progress} />
       ) : null}
       <div className="calendar-live-explorer__meta">
         <div className="calendar-live-explorer__meta-row">

@@ -26,7 +26,70 @@ export function formatSeconds(sec: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-// --- Compact live clock (beside LIVE label) ---------------------------------
+// --- Pills UI helpers --------------------------------------------------------
+
+export type GamePillsInfo = {
+  liveLabel: string
+  /** e.g. "72%" for progress, or "OT" for overtime */
+  pctOrOt: string | null
+  /** e.g. "Q3 4:32" or "3RD - 6:35" */
+  positionTime: string | null
+  /** Elapsed regulation time formatted */
+  elapsedDisplay: string | null
+  /** Compact stats string (unique, no score dupes) */
+  statsDisplay: string | null
+  /** Last play from product_details */
+  lastPlayDisplay: string | null
+}
+
+const LAST_PLAY_KEYS = new Set(['last_play', 'last_event', 'description', 'summary', 'last_action'])
+
+export function getGamePillsInfo(gp: GameProgressV1): GamePillsInfo {
+  const clock = liveClockInline(gp)
+  const pct =
+    gp.finished_ratio != null && Number.isFinite(gp.finished_ratio)
+      ? Math.round(gp.finished_ratio * 100)
+      : null
+  const isOt = gp.progress_warning === 'Overtime'
+  const pctOrOt = isOt ? 'OT' : pct != null ? `${pct}%` : null
+  const elapsed =
+    gp.timers.regulation_elapsed_seconds != null &&
+    Number.isFinite(gp.timers.regulation_elapsed_seconds)
+      ? formatSeconds(gp.timers.regulation_elapsed_seconds)
+      : null
+  const sc = gp.scores
+  const omitScoreDupes = sc != null && (sc.home != null || sc.away != null)
+  const keys = Object.keys(gp.statistics).filter((k) => !(omitScoreDupes && SCORE_STAT_KEYS.has(k)))
+  const statsDisplay =
+    keys.length > 0
+      ? keys
+          .slice(0, 5)
+          .map((k) => `${k}: ${String(gp.statistics[k])}`)
+          .join(' | ')
+      : null
+  const pd = gp.product_details
+  let lastPlayDisplay: string | null = null
+  if (pd && typeof pd === 'object') {
+    const pdObj = pd as Record<string, unknown>
+    for (const k of LAST_PLAY_KEYS) {
+      const v = pdObj[k]
+      if (typeof v === 'string' && v.trim()) {
+        lastPlayDisplay = v.trim()
+        break
+      }
+    }
+  }
+  return {
+    liveLabel: 'LIVE',
+    pctOrOt,
+    positionTime: clock.clockVisual !== '—' ? clock.clockVisual : null,
+    elapsedDisplay: elapsed,
+    statsDisplay,
+    lastPlayDisplay,
+  }
+}
+
+// --- Compact live clock (beside LIVE label) [kept for above] -----------------
 
 export type LiveClockInlineResult = {
   /** Muted text beside LIVE (may include em dash). */
@@ -183,48 +246,4 @@ export function liveClockInline(gp: GameProgressV1 | null | undefined): LiveCloc
     clockVisual,
     ariaLabel: clockVisual === '—' ? 'Live. Game clock unavailable.' : `Live. ${clockVisual}`,
   }
-}
-
-// --- Verbose explorer lines -------------------------------------------------
-
-/** Human-readable lines for home + explorer (omits empty fragments). */
-export function gameProgressDisplayLines(gp: GameProgressV1): string[] {
-  const lines: string[] = []
-  const pd = gp.product_details
-  if (pd != null && typeof pd === 'object' && 'title' in pd && pd.title != null) {
-    lines.push(String(pd.title))
-  }
-  const sc = gp.scores
-  if (sc != null && (sc.home != null || sc.away != null)) {
-    const h = sc.home != null ? String(sc.home) : '—'
-    const a = sc.away != null ? String(sc.away) : '—'
-    lines.push(`Score ${h}–${a}`)
-  }
-  const t = gp.timers
-  if (gp.finished_ratio != null && Number.isFinite(gp.finished_ratio)) {
-    lines.push(`Regulation ~${Math.round(gp.finished_ratio * 100)}% complete`)
-  }
-  if (t.period_index != null) {
-    lines.push(`Segment ${t.period_index}`)
-  }
-  if (t.clock_display) {
-    lines.push(`Clock ${t.clock_display}`)
-  }
-  if (t.segment_seconds_remaining != null) {
-    lines.push(`Time left in segment ${formatSeconds(t.segment_seconds_remaining)}`)
-  }
-  if (t.regulation_elapsed_seconds != null) {
-    lines.push(`Elapsed (reg) ${formatSeconds(t.regulation_elapsed_seconds)}`)
-  }
-  if (t.regulation_remaining_seconds != null) {
-    lines.push(`Remaining (reg) ${formatSeconds(t.regulation_remaining_seconds)}`)
-  }
-  const stats = gp.statistics
-  const omitScoreDupes = sc != null && (sc.home != null || sc.away != null)
-  const keys = Object.keys(stats).filter((k) => !(omitScoreDupes && SCORE_STAT_KEYS.has(k)))
-  if (keys.length > 0) {
-    const parts = keys.slice(0, 8).map((k) => `${k}: ${String(stats[k])}`)
-    lines.push(`Stats · ${parts.join(' · ')}`)
-  }
-  return lines
 }

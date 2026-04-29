@@ -10,15 +10,13 @@ import {
 } from '@typings/calendarLiveExplorerTypes'
 import type { CalendarLiveEventRow, CalendarLiveMarketRow } from '@typings/calendarLiveTypes'
 import {
-  formatCalendarEventStatusText,
   formatCalendarMarketHumanTitle,
-  formatOptionalTrimmedLine,
   formatSeriesHumanLine,
   getSportsCalendarEventHeadingParts,
 } from '@utils/calendarLiveDisplay'
+
 import { formatCalendarLiveMarketTableCell } from '@utils/calendarLiveMarketCells'
 import { GameProgressSection } from '@components/explorer/calendar-live/GameProgressSection'
-import { LiveStatusIndicator } from '@components/live/LiveStatusIndicator'
 import { sortCalendarLiveMarketsByLastPrice } from '@utils/sortCalendarLiveMarketsByLastPrice'
 
 const HomeMarketRows = memo(function HomeMarketRows({
@@ -72,30 +70,14 @@ const HomeEventBlock = memo(function HomeEventBlock({ row }: { row: CalendarLive
     omitTickerFallback: true,
   })
   const seriesLine = formatSeriesHumanLine(row)
-  const liveTitle = formatOptionalTrimmedLine(row.live_title)
-  const statusBesideTitle = formatCalendarEventStatusText(row)
 
   return (
     <article className="home-games__article">
       <h2 className="home-games__title">
         <span className="home-games__title-text">{eventTitle}</span>
-        <span className="home-games__status-text">{statusBesideTitle}</span>
       </h2>
-      {row.is_live ? (
-        <LiveStatusIndicator
-          classPrefix="home-games"
-          isLive={true}
-          gameProgress={row.game_progress}
-        />
-      ) : null}
-      {liveTitle ? <p className="home-games__live-title">{liveTitle}</p> : null}
-      {row.game_progress ? (
-        <GameProgressSection
-          gameProgress={row.game_progress}
-          classPrefix="home-games"
-          showMeta={false}
-        />
-      ) : null}
+      {row.game_progress ? <GameProgressSection gameProgress={row.game_progress} /> : null}
+
       {seriesLine ? <p className="home-games__meta">{seriesLine}</p> : null}
       <HomeMarketRows markets={row.markets ?? []} />
     </article>
