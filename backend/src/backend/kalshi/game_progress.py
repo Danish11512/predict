@@ -252,14 +252,29 @@ def _extract_period_index(flat: dict[str, Any], sport: SportCode) -> int | None:
     if inn is not None and inn >= 1:
         return inn
     half = _get_first_int(flat, ("half", "period_half"))
-    if half is not None and 1 <= half <= 2 and sport in ("cbb", "ncaaf", "soccer", "mls"):
+    if half is not None and half >= 1 and sport in ("cbb", "ncaaf", "soccer", "mls"):
         return half
+
+    # Parse string half values like "2nd", "1st", "second half"
+    raw_half = _get_first_str(flat, ("half", "period_half"))
+    if raw_half and sport in ("soccer", "mls"):
+        hl = raw_half.lower().strip()
+        if hl.startswith("2") or hl.startswith("second"):
+            return 2
+        if hl.startswith("1") or hl.startswith("first"):
+            return 1
+
     minute = _get_first_int(flat, ("minute", "match_minute", "game_minute"))
     if minute is not None and sport in ("soccer", "mls"):
         return 1 if minute <= 45 else 2
     # Sport-specific period keys
     if sport == "tennis":
+        # Use completed_rounds (sets won) + 1 = current set
+        completed = _get_first_int(flat, ("completed_rounds", "rounds_completed", "sets_completed"))
+        if completed is not None and completed >= 0:
+            return completed + 1
         return _get_first_int(flat, ("set", "set_number", "current_set"))
+
     if sport == "golf":
         return _get_first_int(flat, ("round", "round_number", "hole", "current_hole"))
     if sport in ("racing",):
@@ -295,7 +310,20 @@ def _extract_segment_remaining_seconds(flat: dict[str, Any]) -> int | None:
 
 
 def _extract_regulation_minutes_soccer(flat: dict[str, Any]) -> int | None:
-    return _get_first_int(flat, ("minute", "match_minute", "game_minute"))
+    minute = _get_first_int(flat, ("minute", "match_minute", "game_minute"))
+    if minute is not None:
+        return minute
+    # Try parsing "time" string like "90+5'" or "34'"
+    raw_time = _get_first_str(flat, ("time", "game_time", "match_time"))
+    if raw_time:
+        import re as _re
+        m = _re.match(r"(\d+)(?:\+(\d+))?'?", raw_time.strip())
+        if m:
+            base = int(m.group(1))
+            add = int(m.group(2)) if m.group(2) else 0
+            return base + add
+    return None
+
 
 
 def _extract_inning_half_top(flat: dict[str, Any]) -> bool | None:
@@ -337,6 +365,106 @@ def _finished_ratio_period_only(sport: SportCode, period_idx: int | None, series
     return max(0.0, min(1.0, (period_idx - 1) / float(total)))
 
 
+def _extract_cricket_overs(flat: dict[str, Any]) -> tuple[float | None, float | None, str | None]:
+    """Return (home_overs, away_overs, batting_side) from cricket live_data.
+
+    Overs as float, e.g. 18.6 = 18 overs + 6 balls (= 18.0 + 6/6 = 19.0 balls-count).
+    Kalshi uses decimal where fractional part is balls (0–5), not tenths.
+    """
+    home = _as_float(flat.get("home_overs"))
+    away = _as_float(flat.get("away_overs"))
+    batting = _norm_str(flat.get("batting"))
+    return (home, away, batting)
+
+
+def _overs_to_legal_balls(overs: float) -> int:
+    """Convert Kalshi overs format (18.6 = 18 overs + 6 balls) to total balls.
+
+    18.6 → 18*6 + 6 = 114 balls
+    """
+    full = int(overs)
+    balls = int(round((overs - full) * 10))
+    return full * 6 + balls
+
+
+def _finished_ratio_cricket(flat: dict[str, Any], sport: SportCode) -> float | None:
+    """Cricket progress from overs data.
+
+    T20 (IPL/domestic): 20 overs per innings, 2 innings.
+    ODI: 50 overs per innings, 2 innings.
+    Assumes 2 innings unless Test (unlikely on Kalshi).
+    Uses ``home_overs``/``away_overs`` + ``batting`` to determine innings + overs progress.
+    """
+    if sport != "cricket":
+        return None
+    home_overs, away_overs, batting = _extract_cricket_overs(flat)
+    if home_overs is None and away_overs is None:
+        return None
+
+    # Default T20: 20 overs per innings; could detect from series_ticker later
+    max_overs = 20  # assume T20 (IPL/domestic)
+
+    # Determine which innings we're in based on batting indicator + overs data
+    if batting == "home":
+        if home_overs is not None:
+            balls = _overs_to_legal_balls(home_overs)
+            total_balls = max_overs * 6
+            progress_in_innings = min(balls / total_balls, 1.0)
+            # First innings: 0.0 to 0.5
+            return 0.0 + progress_in_innings * 0.5
+    elif batting == "away":
+        if away_overs is not None:
+            balls = _overs_to_legal_balls(away_overs)
+            total_balls = max_overs * 6
+            progress_in_innings = min(balls / total_balls, 1.0)
+            # Second innings: 0.5 to 1.0
+            return 0.5 + progress_in_innings * 0.5
+    elif home_overs is not None and away_overs is not None:
+        # Both exist: determine which innings based on which is non-zero
+        home_balls = _overs_to_legal_balls(home_overs)
+        away_balls = _overs_to_legal_balls(away_overs)
+        total_balls = max_overs * 6
+        if away_balls == 0 and home_balls > 0:
+            # First innings batting
+            return min(0.0 + home_balls / total_balls * 0.5, 0.5)
+        elif away_balls > 0:
+            # Second innings
+            return min(0.5 + away_balls / total_balls * 0.5, 1.0)
+
+    return None
+
+
+def _cricket_elapsed_seconds(flat: dict[str, Any]) -> int | None:
+    """Estimate elapsed wall-clock from cricket overs.
+
+    T20 innings ~90 min (5400s). Uses current overs / max_overs * innings_duration.
+    """
+    home_overs, away_overs, batting = _extract_cricket_overs(flat)
+    if home_overs is None and away_overs is None:
+        return None
+    max_overs = 20
+    innings_duration_s = 5400  # 90 min per innings
+
+    if batting == "home" and home_overs is not None:
+        balls = _overs_to_legal_balls(home_overs)
+        total_balls = max_overs * 6
+        return int(balls / total_balls * innings_duration_s)
+    elif batting == "away" and away_overs is not None:
+        balls = _overs_to_legal_balls(away_overs)
+        total_balls = max_overs * 6
+        return int(innings_duration_s + balls / total_balls * innings_duration_s)
+    elif home_overs is not None and away_overs is not None:
+        home_balls = _overs_to_legal_balls(home_overs)
+        away_balls = _overs_to_legal_balls(away_overs)
+        total_balls = max_overs * 6
+        if away_balls == 0 and home_balls > 0:
+            return int(home_balls / total_balls * innings_duration_s)
+        elif away_balls > 0:
+            return int(innings_duration_s + away_balls / total_balls * innings_duration_s)
+    return None
+
+
+
 def _finished_ratio_clock_sport(
     sport: SportCode,
     period_idx: int | None,
@@ -349,8 +477,10 @@ def _finished_ratio_clock_sport(
     n_seg, seg_len = tpl
     if period_idx is None or period_idx < 1:
         return None
+    # Overtime: regulation finished, mark as done + progress_warning triggers "Overtime" label
     if period_idx > n_seg:
-        return None
+        return 1.0
+
     rem = seg_remaining
     if rem is None:
         rem = _extract_segment_remaining_seconds(flat)
@@ -480,6 +610,15 @@ def _timers(
         delta = (now - event_start).total_seconds()
         if delta >= 0:
             elapsed_since_start = int(delta)
+    # Fallback: estimate from period index for period-only sports (e.g. tennis ~45 min/set)
+    if elapsed_since_start is None and period_idx is not None and period_idx >= 1:
+        if sport == "tennis":
+            # ~45 min per set, midpoint of current set
+            elapsed_since_start = int((period_idx - 1) * 2700 + 1350)
+        elif sport == "cricket":
+            # already handled via _cricket_elapsed_seconds
+            pass
+
 
     # Total periods for display (e.g. "Set 2/3") — series_ticker for GS tennis
     total_periods = _total_regulation_periods(sport, series_ticker) or (_regulation_segments(sport)[0] if _regulation_segments(sport) else None)
@@ -663,6 +802,11 @@ def game_progress_from_live_data(
                 if clock_ratio is not None:
                     finished_ratio = clock_ratio
                     strategy = "clock"
+        elif sport == "cricket":
+            cricket_ratio = _finished_ratio_cricket(flat, sport)
+            if cricket_ratio is not None:
+                finished_ratio = cricket_ratio
+                strategy = "period"
         else:
             clock_ratio = _finished_ratio_clock_sport(sport, period_idx, seg_rem, flat)
             if clock_ratio is not None:
@@ -682,6 +826,12 @@ def game_progress_from_live_data(
             strategy = "temporal"
 
     timers = _timers(sport, period_idx, seg_rem, flat, finished_ratio, now=now, event_start=event_start, series_ticker=series_ticker)
+    # Cricket-specific: add overs-based elapsed to timers
+    if sport == "cricket" and details:
+        cricket_elapsed = _cricket_elapsed_seconds(flat)
+        if cricket_elapsed is not None:
+            timers["elapsed_since_start_seconds"] = cricket_elapsed
+
     statistics = _collect_statistics(flat) if flat else {}
     tpl = _regulation_segments(sport)
     warning = _progress_warning(

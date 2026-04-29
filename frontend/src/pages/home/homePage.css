@@ -141,11 +141,13 @@
   font-weight: 500;
 }
 
-.gp-pill--clock {
+.gp-pill--clock,
+.gp-pill--elapsed {
   background: color-mix(in srgb, var(--muted) 60%, transparent);
   color: var(--foreground);
   font-weight: 500;
 }
+
 
 .gp-details {
   display: flex;

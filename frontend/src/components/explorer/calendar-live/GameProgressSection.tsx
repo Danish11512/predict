@@ -35,6 +35,9 @@ export const GameProgressSection = memo(function GameProgressSection({
   if (info.positionTime) {
     pills.push({ text: info.positionTime, className: 'gp-pill--clock' })
   }
+  if (info.elapsedDisplay) {
+    pills.push({ text: info.elapsedDisplay, className: 'gp-pill--elapsed' })
+  }
 
   return (
     <div className="gp-root">
@@ -45,12 +48,10 @@ export const GameProgressSection = memo(function GameProgressSection({
           </span>
         ))}
       </div>
-      {info.elapsedDisplay || info.statsDisplay || info.lastPlayDisplay ? (
+      {info.statsDisplay || info.lastPlayDisplay ? (
         <div className="gp-details">
-          {info.elapsedDisplay ? (
-            <span className="gp-elapsed">Elapsed {info.elapsedDisplay}</span>
-          ) : null}
           {info.statsDisplay ? <span className="gp-stats">{info.statsDisplay}</span> : null}
+
           {info.lastPlayDisplay ? (
             <span className="gp-last-play">{info.lastPlayDisplay}</span>
           ) : null}

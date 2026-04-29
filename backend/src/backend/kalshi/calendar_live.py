@@ -166,6 +166,24 @@ def _augment_ticker_to_milestone(
     return out
 
 
+def _first_occurrence_datetime(row: dict[str, Any]) -> datetime | None:
+    """Fallback event start from the earliest market ``occurrence_datetime``."""
+    event_obj = row.get("event")
+    if not isinstance(event_obj, dict):
+        return None
+    markets = event_obj.get("markets")
+    if not isinstance(markets, list):
+        return None
+    earliest: datetime | None = None
+    for m in markets:
+        if not isinstance(m, dict):
+            continue
+        dt = parse_iso_utc(m.get("occurrence_datetime"))
+        if dt is not None and (earliest is None or dt < earliest):
+            earliest = dt
+    return earliest
+
+
 def _attach_game_progress_to_events(
     rows: list[dict[str, Any]],
     ticker_to_milestone: dict[str, str],
@@ -192,6 +210,9 @@ def _attach_game_progress_to_events(
             ev_expiration = parse_iso_utc(
                 event_obj.get("expected_expiration_time") or event_obj.get("expiration_time")
             )
+        # Fallback: use market occurrence_datetime when strike_date is missing
+        if ev_start is None:
+            ev_start = _first_occurrence_datetime(row)
 
         # Live data requires milestone id
         mid = ticker_to_milestone.get(et)
@@ -204,6 +225,7 @@ def _attach_game_progress_to_events(
             event_start=ev_start,
             event_expiration=ev_expiration,
         )
+
 
 
 def _extract_event_status_text(row: dict[str, Any]) -> str | None:
